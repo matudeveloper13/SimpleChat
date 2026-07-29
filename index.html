@@ -11,21 +11,22 @@
 </head>
 <body>
 
-  <!-- Falling Stars / Dots Background Effect -->
+  <!-- Falling Background Dots Container -->
   <div class="stars-container" id="stars-container"></div>
 
-  <!-- Background Music Audio Player -->
+  <!-- Background Music (Loop enabled) -->
   <audio id="bg-music" loop>
     <source src="relaxing.mp3" type="audio/mpeg">
   </audio>
 
-  <!-- Floating Music Play/Pause Button -->
-  <button id="music-toggle-btn" class="music-floating-btn" title="Play/Pause Relaxing Music">🎵 Play Music</button>
-
-  <!-- Discord Floating Button Outside Top-Left Corner -->
-  <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="external-discord-link" title="Join our Discord">
-    <img src="discord.png" alt="Discord" />
-  </a>
+  <!-- Top-Left Floating Utility Bar (Discord, Music Toggle, Settings) -->
+  <div class="floating-top-left-bar">
+    <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="utility-icon-btn" title="Join Discord">
+      <img src="discord.png" alt="Discord" />
+    </a>
+    <button id="music-toggle-btn" class="utility-emoji-btn" title="Play/Pause Music">🎵</button>
+    <button id="theme-toggle-btn" class="utility-emoji-btn" title="Toggle Light/Dark Mode">⚙️</button>
+  </div>
 
   <main class="chat-container">
     
@@ -50,6 +51,14 @@
     <!-- Message Feed -->
     <div id="messages-container" class="messages-box">
       <div class="empty-state">Loading messages...</div>
+    </div>
+
+    <!-- Active Reply Preview Box Above Input -->
+    <div id="reply-preview-container" class="reply-preview-container hidden">
+      <div class="reply-preview-content">
+        <span id="reply-preview-text">Replying to someone...</span>
+        <button id="cancel-reply-btn" class="cancel-reply-x">&times;</button>
+      </div>
     </div>
 
     <!-- Typing Indicator Area -->
@@ -166,37 +175,48 @@
     </div>
   </div>
 
-  <!-- Falling Star Dots Script -->
+  <!-- Script logic for dots, music loop toggle, and theme switching -->
   <script>
+    // Falling Relaxing Dots Generator
     const starsContainer = document.getElementById("stars-container");
-    for (let i = 0; i < 50; i++) {
-      const star = document.createElement("div");
-      star.className = "star";
-      star.style.left = `${Math.random() * 100}vw`;
-      star.style.top = `${Math.random() * -100}vh`;
-      star.style.width = `${2 + Math.random() * 3}px`;
-      star.style.height = star.style.width;
-      star.style.animationDuration = `${4 + Math.random() * 6}s`;
-      star.style.animationDelay = `${Math.random() * 5}s`;
-      starsContainer.appendChild(star);
+    for (let i = 0; i < 45; i++) {
+      const dot = document.createElement("div");
+      dot.className = "star";
+      dot.style.left = `${Math.random() * 100}vw`;
+      dot.style.top = `${Math.random() * -100}vh`;
+      dot.style.width = `${3 + Math.random() * 3}px`;
+      dot.style.height = dot.style.width;
+      dot.style.animationDuration = `${8 + Math.random() * 7}s`; // slow & relaxing
+      dot.style.animationDelay = `${Math.random() * 5}s`;
+      starsContainer.appendChild(dot);
     }
 
-    // Music Player Toggle Logic
+    // Music Player Loop Toggle
     const music = document.getElementById("bg-music");
     const musicBtn = document.getElementById("music-toggle-btn");
     let isPlaying = false;
     musicBtn.addEventListener("click", () => {
       if (isPlaying) {
         music.pause();
-        musicBtn.textContent = "🎵 Play Music";
+        musicBtn.style.opacity = "0.5";
         isPlaying = false;
       } else {
         music.play().then(() => {
-          musicBtn.textContent = "⏸️ Pause Music";
+          musicBtn.style.opacity = "1";
           isPlaying = true;
-        }).catch(err => {
-          console.log("Audio play blocked:", err);
-        });
+        }).catch(err => console.log("Audio play prevented:", err));
+      }
+    });
+
+    // Theme Switcher (Light / Dark Mode)
+    const themeBtn = document.getElementById("theme-toggle-btn");
+    let isDark = true;
+    themeBtn.addEventListener("click", () => {
+      isDark = !isDark;
+      if (isDark) {
+        document.body.classList.remove("light-mode");
+      } else {
+        document.body.classList.add("light-mode");
       }
     });
   </script>
