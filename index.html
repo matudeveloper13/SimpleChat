@@ -1,19 +1,34 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="./icon.png?v=2" />
   <link rel="shortcut icon" type="image/png" href="./icon.png?v=2" />
+  <link rel="manifest" href="manifest.json" />
   <title>SimpleChat</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- Falling Stars Background Container -->
+  <div class="stars-container" id="stars-container"></div>
+
+  <!-- Background Music Loop -->
+  <audio id="bg-music" autoplay loop>
+    <source src="relaxing.mp3" type="audio/mpeg">
+  </audio>
+
   <main class="chat-container">
     
     <!-- Header -->
     <header class="header">
       <div class="logo-group">
+        <!-- Discord Icon Link -->
+        <a href="https://discord.gg/nNGp9VVGWs" target="_blank" title="Join our Discord">
+          <img src="discord.png" alt="Discord" class="discord-icon-btn" />
+        </a>
+
         <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
           <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
           <span id="my-mini-username">Username</span>
@@ -147,6 +162,20 @@
       <button id="close-view-profile" class="btn btn-primary full-width">Close</button>
     </div>
   </div>
+
+  <!-- Falling Stars Script Generator -->
+  <script>
+    const starsContainer = document.getElementById("stars-container");
+    for (let i = 0; i < 40; i++) {
+      const star = document.createElement("div");
+      star.className = "star";
+      star.style.left = `${Math.random() * 100}vw`;
+      star.style.top = `${Math.random() * -100}vh`;
+      star.style.animationDuration = `${3 + Math.random() * 5}s`;
+      star.style.animationDelay = `${Math.random() * 5}s`;
+      starsContainer.appendChild(star);
+    }
+  </script>
 
   <script type="module" src="app.js"></script>
 </body>
