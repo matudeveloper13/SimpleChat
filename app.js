@@ -80,11 +80,19 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 
 let currentUsername = "";
-let currentAvatar = "avatar1.png"; // Default to avatar 1
+let currentAvatar = "avatar1.png";
 let currentBio = "";
+
+// Global user avatar cache so previous messages dynamically display updated avatars instantly
+const userAvatarCache = {};
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
+
+const getRandomAvatar = () => {
+  const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+  return avatars[Math.floor(Math.random() * avatars.length)];
+};
 
 const formatTime = (timestamp) => {
   if (!timestamp) return "Just now";
@@ -139,10 +147,14 @@ presetAvatars.forEach(img => {
     avatarSelectorOverlay.classList.add("hidden");
 
     if (currentUsername) {
+      userAvatarCache[currentUsername] = currentAvatar;
       await setDoc(doc(db, "users", currentUsername), {
         avatar: currentAvatar,
         bio: currentBio
       }, { merge: true });
+
+      // Refresh message feed view so previous chats instantly reflect the new avatar
+      triggerRerender();
     }
   });
 });
@@ -206,9 +218,10 @@ registerForm.addEventListener("submit", async (e) => {
     authError.textContent = "Creating account...";
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     
-    // Default avatar1.png setup
+    // Assign a random default avatar upon registration
+    const assignedAvatar = getRandomAvatar();
     await setDoc(doc(db, "users", username), {
-      avatar: "avatar1.png",
+      avatar: assignedAvatar,
       bio: ""
     });
 
@@ -248,13 +261,14 @@ onAuthStateChanged(auth, async (user) => {
       const userSnap = await getDoc(doc(db, "users", currentUsername));
       if (userSnap.exists()) {
         const data = userSnap.data();
-        currentAvatar = data.avatar || "avatar1.png";
+        currentAvatar = data.avatar || getRandomAvatar();
         currentBio = data.bio || "";
       } else {
-        currentAvatar = "avatar1.png";
+        currentAvatar = getRandomAvatar();
         currentBio = "";
         await setDoc(doc(db, "users", currentUsername), { avatar: currentAvatar, bio: currentBio });
       }
+      userAvatarCache[currentUsername] = currentAvatar;
       myMiniAvatar.src = currentAvatar;
     } catch (err) {
       console.error("Error loading profile:", err);
@@ -313,7 +327,6 @@ messageForm.addEventListener("submit", async (e) => {
     await addDoc(collection(db, "messages"), {
       text: text,
       username: currentUsername,
-      avatar: currentAvatar,
       timestamp: serverTimestamp()
     });
   } catch (err) {
@@ -321,20 +334,36 @@ messageForm.addEventListener("submit", async (e) => {
   }
 });
 
-const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-onSnapshot(q, (snapshot) => {
+let lastSnapshot = null;
+function renderMessages(snapshot) {
+  lastSnapshot = snapshot;
   if (snapshot.empty) {
     messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Be the first to say hello!</div>`;
     return;
   }
   
   messagesContainer.innerHTML = "";
-  snapshot.forEach((docSnap) => {
+  snapshot.forEach(async (docSnap) => {
     const msg = docSnap.data();
     const timeString = formatTime(msg.timestamp);
     const isMe = msg.username === currentUsername;
     const alignClass = isMe ? "sent" : "received";
-    const userAvatar = msg.avatar || "avatar1.png";
+    
+    // Resolve user avatar dynamically from cache or fetch from Firestore so previous chats update instantly
+    let userAvatar = userAvatarCache[msg.username];
+    if (!userAvatar) {
+      try {
+        const uSnap = await getDoc(doc(db, "users", msg.username));
+        if (uSnap.exists() && uSnap.data().avatar) {
+          userAvatar = uSnap.data().avatar;
+        } else {
+          userAvatar = "avatar1.png";
+        }
+        userAvatarCache[msg.username] = userAvatar;
+      } catch (e) {
+        userAvatar = "avatar1.png";
+      }
+    }
     
     const msgEl = document.createElement("div");
     msgEl.className = `msg ${alignClass}`;
@@ -349,7 +378,6 @@ onSnapshot(q, (snapshot) => {
       </div>
     `;
 
-    // Click event to view profile when clicking name or avatar
     msgEl.querySelectorAll("[data-username]").forEach(el => {
       el.addEventListener("click", () => {
         openUserProfileModal(el.getAttribute("data-username"));
@@ -360,6 +388,17 @@ onSnapshot(q, (snapshot) => {
   });
   
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function triggerRerender() {
+  if (lastSnapshot) {
+    renderMessages(lastSnapshot);
+  }
+}
+
+const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+onSnapshot(q, (snapshot) => {
+  renderMessages(snapshot);
 });
 
 const typingQ = query(collection(db, "typing"));
