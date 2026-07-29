@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SimpleChat Pro</title>
+  <title>SimpleChat</title>
+  <link rel="icon" type="image/png" href="icon.png" />
   <link rel="stylesheet" href="style.css" />
+  <!-- Emoji Picker Library -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 </head>
 <body>
   <main class="chat-container">
@@ -29,15 +32,31 @@
       <div class="empty-state">Loading messages...</div>
     </div>
 
-    <!-- Input Area -->
-    <form id="message-form" class="message-form">
-      <div class="input-wrapper">
-        <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
+    <!-- Typing Indicator Area -->
+    <div id="typing-indicator" class="typing-wrapper hidden">
+      <div class="typing-bubble">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </div>
-      <button type="submit" id="send-btn" class="btn btn-primary" disabled>
-        Send
-      </button>
-    </form>
+      <span id="typing-text">Someone is typing...</span>
+    </div>
+
+    <!-- Input Area with Emoji Button -->
+    <div class="input-section">
+      <!-- Hidden Emoji Picker -->
+      <div id="emoji-picker-container" class="hidden">
+        <emoji-picker></emoji-picker>
+      </div>
+      
+      <form id="message-form" class="message-form">
+        <button type="button" id="emoji-btn" class="btn-emoji" disabled>😀</button>
+        <div class="input-wrapper">
+          <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
+        </div>
+        <button type="submit" id="send-btn" class="btn btn-primary" disabled>
+          Send
+        </button>
+      </form>
+    </div>
 
   </main>
 
