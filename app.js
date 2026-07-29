@@ -94,14 +94,33 @@ const getRandomAvatar = () => {
   return avatars[Math.floor(Math.random() * avatars.length)];
 };
 
+// Smart Timestamp formatting (handles 24 hours check, months, and years)
 const formatTime = (timestamp) => {
   if (!timestamp) return "Just now";
   const date = timestamp.toDate();
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true
-  }).format(date);
+  const now = new Date();
+  
+  const isToday = date.toDateString() === now.toDateString();
+  const isThisYear = date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }).format(date);
+  } else if (isThisYear) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric"
+    }).format(date);
+  } else {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric"
+    }).format(date);
+  }
 };
 
 // UI Toggles
@@ -153,7 +172,6 @@ presetAvatars.forEach(img => {
         bio: currentBio
       }, { merge: true });
 
-      // Refresh message feed view so previous chats instantly reflect the new avatar
       triggerRerender();
     }
   });
@@ -218,7 +236,6 @@ registerForm.addEventListener("submit", async (e) => {
     authError.textContent = "Creating account...";
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     
-    // Assign a random default avatar upon registration
     const assignedAvatar = getRandomAvatar();
     await setDoc(doc(db, "users", username), {
       avatar: assignedAvatar,
@@ -293,7 +310,6 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Emoji Button Shortcut
 emojiBtn.addEventListener("click", () => {
   messageInput.focus();
   if (navigator.platform.indexOf('Mac') > -1) {
@@ -343,13 +359,17 @@ function renderMessages(snapshot) {
   }
   
   messagesContainer.innerHTML = "";
-  snapshot.forEach(async (docSnap) => {
+  
+  const docsArray = [];
+  snapshot.forEach(docSnap => docsArray.push(docSnap));
+  docsArray.reverse();
+
+  docsArray.forEach(async (docSnap) => {
     const msg = docSnap.data();
     const timeString = formatTime(msg.timestamp);
     const isMe = msg.username === currentUsername;
     const alignClass = isMe ? "sent" : "received";
     
-    // Resolve user avatar dynamically from cache or fetch from Firestore so previous chats update instantly
     let userAvatar = userAvatarCache[msg.username];
     if (!userAvatar) {
       try {
@@ -396,7 +416,7 @@ function triggerRerender() {
   }
 }
 
-const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
 onSnapshot(q, (snapshot) => {
   renderMessages(snapshot);
 });
