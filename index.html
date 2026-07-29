@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="chat-container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <h1>Global Chat</h1>
+      <div id="user-status">
+        <span id="current-user-text">Browsing as Guest</span>
+        <button id="auth-modal-btn" class="btn">Register / Login</button>
+        <button id="logout-btn" class="btn hidden">Logout</button>
+      </div>
+    </header>
+
+    <!-- Chat Messages Window -->
+    <div id="messages-container" class="messages-box"></div>
+
+    <!-- Message Input Bar -->
+    <form id="message-form" class="message-form">
+      <input type="text" id="message-input" placeholder="Type a message... (Register required)" disabled required />
+      <button type="submit" id="send-btn" class="btn" disabled>Send</button>
+    </form>
+
+  </div>
+
+  <!-- Auth Pop-up Overlay (Defaults to Register) -->
+  <div id="auth-overlay" class="overlay hidden">
+    <div class="modal">
+      <div class="tab-header">
+        <button id="tab-register" class="tab-btn active">Register</button>
+        <button id="tab-login" class="tab-btn">Login</button>
+      </div>
+
+      <!-- Register Form (Default) -->
+      <form id="register-form">
+        <input type="text" id="register-username" placeholder="Username (4-17 characters)" required />
+        <input type="password" id="register-password" placeholder="Password" required />
+        <button type="submit" class="btn full-width">Create Account</button>
+      </form>
+
+      <!-- Login Form -->
+      <form id="login-form" class="hidden">
+        <input type="text" id="login-username" placeholder="Username" required />
+        <input type="password" id="login-password" placeholder="Password" required />
+        <button type="submit" class="btn full-width">Log In</button>
+      </form>
+
+      <p id="auth-error" class="error-msg"></p>
+      <button id="close-modal-btn" class="btn-text">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
