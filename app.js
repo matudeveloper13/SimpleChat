@@ -34,6 +34,35 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Comprehensive list of prohibited words and slurs (all lowercase)
+const forbiddenWords = [
+  "nigger",
+  "nigga",
+  "negro",
+  "faggot",
+  "fag",
+  "retard",
+  "tranny",
+  "kike",
+  "spic",
+  "chink",
+  "wetback",
+  "coon",
+  "dyke",
+  "whore",
+  "slut",
+  "cunt",
+  "bastard",
+  "motherfucker",
+  "pussy",
+  "dick"
+];
+
+function containsProfanity(username) {
+  const cleanedUsername = username.toLowerCase().replace(/[^a-z]/g, "");
+  return forbiddenWords.some(word => cleanedUsername.includes(word));
+}
+
 // DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
@@ -78,6 +107,16 @@ const closeViewProfile = document.getElementById("close-view-profile");
 const viewUserAvatar = document.getElementById("view-user-avatar");
 const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
+
+// Ban Elements
+const banOverlay = document.getElementById("ban-overlay");
+const dismissBanBtn = document.getElementById("dismiss-ban-btn");
+
+dismissBanBtn.addEventListener("click", async () => {
+  banOverlay.classList.add("hidden");
+  await signOut(auth);
+  authOverlay.classList.remove("hidden");
+});
 
 let currentUsername = "";
 let currentAvatar = "avatar1.png";
@@ -222,6 +261,11 @@ registerForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  if (containsProfanity(username)) {
+    authError.textContent = "That username is not allowed. Please choose a different name.";
+    return;
+  }
+
   try {
     authError.textContent = "Creating account...";
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
@@ -229,7 +273,8 @@ registerForm.addEventListener("submit", async (e) => {
     const assignedAvatar = getRandomAvatar();
     await setDoc(doc(db, "users", username), {
       avatar: assignedAvatar,
-      bio: ""
+      bio: "",
+      banned: false
     });
 
     authOverlay.classList.add("hidden");
@@ -258,28 +303,35 @@ logoutBtn.addEventListener("click", () => signOut(auth));
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUsername = user.email.split("@")[0];
-    currentUserText.textContent = currentUsername;
-    myMiniUsername.textContent = currentUsername;
-    authModalBtn.classList.add("hidden");
-    logoutBtn.classList.remove("hidden");
-    topLeftProfile.classList.remove("hidden");
 
     try {
       const userSnap = await getDoc(doc(db, "users", currentUsername));
       if (userSnap.exists()) {
         const data = userSnap.data();
+        
+        if (data.banned === true) {
+          banOverlay.classList.remove("hidden");
+          return;
+        }
+
         currentAvatar = data.avatar || getRandomAvatar();
         currentBio = data.bio || "";
       } else {
         currentAvatar = getRandomAvatar();
         currentBio = "";
-        await setDoc(doc(db, "users", currentUsername), { avatar: currentAvatar, bio: currentBio });
+        await setDoc(doc(db, "users", currentUsername), { avatar: currentAvatar, bio: currentBio, banned: false });
       }
       userAvatarCache[currentUsername] = currentAvatar;
       myMiniAvatar.src = currentAvatar;
     } catch (err) {
       console.error("Error loading profile:", err);
     }
+
+    currentUserText.textContent = currentUsername;
+    myMiniUsername.textContent = currentUsername;
+    authModalBtn.classList.add("hidden");
+    logoutBtn.classList.remove("hidden");
+    topLeftProfile.classList.remove("hidden");
 
     messageInput.disabled = false;
     messageInput.placeholder = "Message...";
@@ -291,7 +343,7 @@ onAuthStateChanged(auth, async (user) => {
     currentAvatar = "avatar1.png";
     currentBio = "";
     currentUserText.textContent = "Guest";
-    authModalBtn.classList.remove("hidden");
+    authModalBtn.classList.add("hidden");
     logoutBtn.classList.add("hidden");
     topLeftProfile.classList.add("hidden");
     messageInput.disabled = true;
@@ -299,15 +351,6 @@ onAuthStateChanged(auth, async (user) => {
     sendBtn.disabled = true;
     emojiBtn.disabled = true;
     triggerRerender();
-  }
-});
-
-emojiBtn.addEventListener("click", () => {
-  messageInput.focus();
-  if (navigator.platform.indexOf('Mac') > -1) {
-    alert("Tip: Press Cmd + Control + Space to open your Mac emoji keyboard!");
-  } else {
-    alert("Tip: Press Windows Key + . (period) to open your Windows emoji keyboard!");
   }
 });
 
@@ -350,7 +393,6 @@ async function renderMessages(snapshot) {
     return;
   }
   
-  // Extract docs and sort chronologically oldest-first so they render top-to-bottom properly
   const docsArray = [];
   snapshot.forEach(docSnap => docsArray.push(docSnap));
   docsArray.sort((a, b) => {

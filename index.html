@@ -54,14 +54,6 @@
       <div class="empty-state">Loading messages...</div>
     </div>
 
-    <!-- Active Reply Preview Box Above Input -->
-    <div id="reply-preview-container" class="reply-preview-container hidden">
-      <div class="reply-preview-content">
-        <span id="reply-preview-text">Replying to someone...</span>
-        <button id="cancel-reply-btn" class="cancel-reply-x">&times;</button>
-      </div>
-    </div>
-
     <!-- Typing Indicator Area -->
     <div id="typing-indicator" class="typing-wrapper hidden">
       <div class="typing-bubble">
@@ -206,6 +198,17 @@
     </div>
   </div>
 
+  <!-- Ban Screen Overlay -->
+  <div id="ban-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2 style="color: var(--danger); margin-bottom: 10px;">Account Banned</h2>
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
+        This account has been banned due to violations of our community guidelines regarding inappropriate usernames or language.
+      </p>
+      <button id="dismiss-ban-btn" class="btn btn-primary full-width">Create New Account / Sign In</button>
+    </div>
+  </div>
+
   <!-- Inline Script for Background Stars, Music, and Emoji Picker Logic -->
   <script>
     const starsContainer = document.getElementById("stars-container");
@@ -258,7 +261,6 @@
       lightModeBtn.className = "btn btn-outline";
     });
 
-    // Discord Emoji Picker Toggle & Population Logic
     const emojiBtn = document.getElementById("emoji-btn");
     const emojiPicker = document.getElementById("discord-emoji-picker");
     const emojiGrid = document.getElementById("discord-emoji-grid");
@@ -274,8 +276,6 @@
 
     function renderEmojis() {
       emojiGrid.innerHTML = "";
-      
-      // Render avatar emojis as actual inline images sent to chat when clicked
       avatarEmojis.forEach(avatar => {
         const img = document.createElement("img");
         img.src = avatar;
@@ -289,7 +289,6 @@
         emojiGrid.appendChild(img);
       });
 
-      // Render standard popular emojis
       popularEmojis.forEach(emoji => {
         const span = document.createElement("span");
         span.className = "discord-emoji-item";
