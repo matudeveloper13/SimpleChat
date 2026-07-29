@@ -16,7 +16,7 @@ import {
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Firebase Config Block (Filled with your project details)
+// TODO: Paste your project configuration here!
 const firebaseConfig = {
   apiKey: "PASTE_YOUR_API_KEY_HERE",
   authDomain: "simplechat-e1787.firebaseapp.com",
@@ -49,120 +49,140 @@ const messagesContainer = document.getElementById("messages-container");
 
 let currentUsername = "";
 
-// Helper: Maps plain usernames to standard Firebase format behind the scenes
-const makeEmail = (username) => `${username.toLowerCase().trim()}@chat.com`;
+// Security and Formatting Helpers
+const makeSecurePass = (pass) => `sc_${pass}_pad123`;
+const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 
-// Modal Tab Switchers
-tabRegister.addEventListener("click", () => {
-  tabRegister.classList.add("active");
-  tabLogin.classList.remove("active");
-  registerForm.classList.remove("hidden");
-  loginForm.classList.add("hidden");
+const formatTime = (timestamp) => {
+  if (!timestamp) return "Just now";
+  const date = timestamp.toDate();
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  }).format(date);
+};
+
+// UI Toggles
+const switchTab = (activeTab, inactiveTab, activeForm, inactiveForm) => {
+  activeTab.classList.add("active");
+  inactiveTab.classList.remove("active");
+  activeForm.classList.remove("hidden");
+  inactiveForm.classList.add("hidden");
   authError.textContent = "";
-});
+};
 
-tabLogin.addEventListener("click", () => {
-  tabLogin.classList.add("active");
-  tabRegister.classList.remove("active");
-  loginForm.classList.remove("hidden");
-  registerForm.classList.add("hidden");
-  authError.textContent = "";
-});
+tabRegister.addEventListener("click", () => switchTab(tabRegister, tabLogin, registerForm, loginForm));
+tabLogin.addEventListener("click", () => switchTab(tabLogin, tabRegister, loginForm, registerForm));
 
-// Modal Open / Close
 authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
 closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
 
-// Account Registration
+// Authentication
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("register-username").value.trim();
   const password = document.getElementById("register-password").value;
 
-  if (username.length < 4 || username.length > 17) {
-    authError.textContent = "Username must be between 4 and 17 characters!";
+  if (username.length < 2) {
+    authError.textContent = "Username must be at least 2 characters.";
     return;
   }
 
   try {
-    await createUserWithEmailAndPassword(auth, makeEmail(username), password);
-    currentUsername = username;
+    authError.textContent = "Creating account...";
+    await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     authOverlay.classList.add("hidden");
   } catch (err) {
-    authError.textContent = "Registration failed. Username may already be taken.";
+    if (err.code === "auth/email-already-in-use") {
+      authError.textContent = "Username is already taken.";
+    } else {
+      authError.textContent = "Failed to connect. Check your Firebase keys.";
+    }
   }
 });
 
-// Account Login
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("login-username").value.trim();
   const password = document.getElementById("login-password").value;
 
   try {
-    await signInWithEmailAndPassword(auth, makeEmail(username), password);
-    currentUsername = username;
+    authError.textContent = "Signing in...";
+    await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     authOverlay.classList.add("hidden");
   } catch (err) {
     authError.textContent = "Invalid username or password.";
   }
 });
 
-// Logout
 logoutBtn.addEventListener("click", () => signOut(auth));
 
 // Auth State Listener
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUsername = user.email.split("@")[0];
-    currentUserText.textContent = `@${currentUsername}`;
+    currentUserText.textContent = currentUsername;
     authModalBtn.classList.add("hidden");
     logoutBtn.classList.remove("hidden");
     messageInput.disabled = false;
-    messageInput.placeholder = "Type a message...";
+    messageInput.placeholder = "Type your message...";
     sendBtn.disabled = false;
   } else {
     currentUsername = "";
-    currentUserText.textContent = "Browsing as Guest";
+    currentUserText.textContent = "Guest";
     authModalBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     messageInput.disabled = true;
-    messageInput.placeholder = "Type a message... (Register required)";
+    messageInput.placeholder = "Sign in to start typing...";
     sendBtn.disabled = true;
   }
 });
 
-// Send Message
+// Messaging
 messageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text || !currentUsername) return;
 
+  messageInput.value = ""; // Clear immediately for UX
+  
   try {
     await addDoc(collection(db, "messages"), {
       text: text,
       username: currentUsername,
       timestamp: serverTimestamp()
     });
-    messageInput.value = "";
   } catch (err) {
     console.error("Error sending message:", err);
   }
 });
 
-// Realtime Messages Feed
+// Realtime Feed
 const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
 onSnapshot(q, (snapshot) => {
+  if (snapshot.empty) {
+    messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Be the first to say hello!</div>`;
+    return;
+  }
+  
   messagesContainer.innerHTML = "";
   snapshot.forEach((doc) => {
     const msg = doc.data();
+    const timeString = formatTime(msg.timestamp);
+    
     const msgEl = document.createElement("div");
     msgEl.className = "msg";
     msgEl.innerHTML = `
-      <div class="msg-author">@${msg.username || "anonymous"}</div>
-      <div class="msg-text">${msg.text}</div>
+      <div class="msg-header">
+        <span class="msg-author">${msg.username || "anonymous"}</span>
+        <span class="msg-time">${timeString}</span>
+      </div>
+      <div class="msg-bubble">${msg.text}</div>
     `;
     messagesContainer.appendChild(msgEl);
   });
+  
+  // Auto-scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
