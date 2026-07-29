@@ -281,9 +281,9 @@
         img.src = avatar;
         img.className = "discord-avatar-emoji-item";
         img.title = avatar;
+        // Notice we removed emojiPicker.classList.add("hidden") here so the panel stays open!
         img.addEventListener("click", () => {
           messageInput.value += ` <img src="${avatar}" class="inline-chat-avatar-emoji" alt="emoji" /> `;
-          emojiPicker.classList.add("hidden");
           messageInput.focus();
         });
         emojiGrid.appendChild(img);
@@ -293,9 +293,9 @@
         const span = document.createElement("span");
         span.className = "discord-emoji-item";
         span.textContent = emoji;
+        // Panel stays open so you can keep clicking emojis continuously
         span.addEventListener("click", () => {
           messageInput.value += emoji;
-          emojiPicker.classList.add("hidden");
           messageInput.focus();
         });
         emojiGrid.appendChild(span);

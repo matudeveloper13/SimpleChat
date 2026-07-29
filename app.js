@@ -343,7 +343,7 @@ onAuthStateChanged(auth, async (user) => {
     currentAvatar = "avatar1.png";
     currentBio = "";
     currentUserText.textContent = "Guest";
-    authModalBtn.classList.add("hidden");
+    authModalBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     topLeftProfile.classList.add("hidden");
     messageInput.disabled = true;
@@ -370,6 +370,12 @@ messageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text || !currentUsername) return;
+
+  // 650 character limit check
+  if (text.length > 650) {
+    alert(`Your message is too long (${text.length} characters). Please delete until it is 649 characters or fewer.`);
+    return;
+  }
 
   messageInput.value = "";
   await deleteDoc(doc(db, "typing", currentUsername));
