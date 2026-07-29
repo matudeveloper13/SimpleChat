@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -11,24 +11,27 @@
 </head>
 <body>
 
-  <!-- Falling Stars Background Container -->
+  <!-- Falling Stars / Dots Background Effect -->
   <div class="stars-container" id="stars-container"></div>
 
-  <!-- Background Music Loop -->
-  <audio id="bg-music" autoplay loop>
+  <!-- Background Music Audio Player -->
+  <audio id="bg-music" loop>
     <source src="relaxing.mp3" type="audio/mpeg">
   </audio>
+
+  <!-- Floating Music Play/Pause Button -->
+  <button id="music-toggle-btn" class="music-floating-btn" title="Play/Pause Relaxing Music">🎵 Play Music</button>
+
+  <!-- Discord Floating Button Outside Top-Left Corner -->
+  <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="external-discord-link" title="Join our Discord">
+    <img src="discord.png" alt="Discord" />
+  </a>
 
   <main class="chat-container">
     
     <!-- Header -->
     <header class="header">
       <div class="logo-group">
-        <!-- Discord Icon Link -->
-        <a href="https://discord.gg/nNGp9VVGWs" target="_blank" title="Join our Discord">
-          <img src="discord.png" alt="Discord" class="discord-icon-btn" />
-        </a>
-
         <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
           <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
           <span id="my-mini-username">Username</span>
@@ -163,18 +166,39 @@
     </div>
   </div>
 
-  <!-- Falling Stars Script Generator -->
+  <!-- Falling Star Dots Script -->
   <script>
     const starsContainer = document.getElementById("stars-container");
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 50; i++) {
       const star = document.createElement("div");
       star.className = "star";
       star.style.left = `${Math.random() * 100}vw`;
       star.style.top = `${Math.random() * -100}vh`;
-      star.style.animationDuration = `${3 + Math.random() * 5}s`;
+      star.style.width = `${2 + Math.random() * 3}px`;
+      star.style.height = star.style.width;
+      star.style.animationDuration = `${4 + Math.random() * 6}s`;
       star.style.animationDelay = `${Math.random() * 5}s`;
       starsContainer.appendChild(star);
     }
+
+    // Music Player Toggle Logic
+    const music = document.getElementById("bg-music");
+    const musicBtn = document.getElementById("music-toggle-btn");
+    let isPlaying = false;
+    musicBtn.addEventListener("click", () => {
+      if (isPlaying) {
+        music.pause();
+        musicBtn.textContent = "🎵 Play Music";
+        isPlaying = false;
+      } else {
+        music.play().then(() => {
+          musicBtn.textContent = "⏸️ Pause Music";
+          isPlaying = true;
+        }).catch(err => {
+          console.log("Audio play blocked:", err);
+        });
+      }
+    });
   </script>
 
   <script type="module" src="app.js"></script>
