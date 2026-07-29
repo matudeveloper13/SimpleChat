@@ -266,6 +266,9 @@
     const emojiGrid = document.getElementById("discord-emoji-grid");
     const messageInput = document.getElementById("message-input");
 
+    // Add your video filenames here (make sure they are in your project folder)
+    const videoEmojis = ["myvideo.mp4"]; 
+
     const popularEmojis = [
       "😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀",
       "🙏", "👌", "❤️", "😊", "😢", "💯", "✨", "🎉", "😎", "🥳",
@@ -276,12 +279,31 @@
 
     function renderEmojis() {
       emojiGrid.innerHTML = "";
+
+      // 1. Render Video Emojis (same size class as other picker items)
+      videoEmojis.forEach(videoFile => {
+        const videoEl = document.createElement("video");
+        videoEl.src = videoFile;
+        videoEl.className = "discord-avatar-emoji-item"; 
+        videoEl.autoplay = true;
+        videoEl.loop = true;
+        videoEl.muted = true;
+        videoEl.playsInline = true;
+        videoEl.title = videoFile;
+
+        videoEl.addEventListener("click", () => {
+          messageInput.value += ` <video src="${videoFile}" class="inline-chat-video-emoji" autoplay loop muted playsinline></video> `;
+          messageInput.focus();
+        });
+        emojiGrid.appendChild(videoEl);
+      });
+
+      // 2. Render Avatar Emojis
       avatarEmojis.forEach(avatar => {
         const img = document.createElement("img");
         img.src = avatar;
         img.className = "discord-avatar-emoji-item";
         img.title = avatar;
-        // Notice we removed emojiPicker.classList.add("hidden") here so the panel stays open!
         img.addEventListener("click", () => {
           messageInput.value += ` <img src="${avatar}" class="inline-chat-avatar-emoji" alt="emoji" /> `;
           messageInput.focus();
@@ -289,11 +311,11 @@
         emojiGrid.appendChild(img);
       });
 
+      // 3. Render Standard Emojis
       popularEmojis.forEach(emoji => {
         const span = document.createElement("span");
         span.className = "discord-emoji-item";
         span.textContent = emoji;
-        // Panel stays open so you can keep clicking emojis continuously
         span.addEventListener("click", () => {
           messageInput.value += emoji;
           messageInput.focus();

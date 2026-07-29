@@ -774,3 +774,25 @@ body {
 .hidden {
   display: none !important;
 }
+/* Video preview inside the emoji panel matches standard size */
+.discord-emoji-scroll-area video.discord-avatar-emoji-item {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
+  background: transparent;
+}
+
+/* Sent video emoji is displayed significantly larger inside chat bubbles */
+.inline-chat-video-emoji {
+  width: 160px;
+  height: auto;
+  max-height: 200px;
+  vertical-align: middle;
+  border-radius: 8px;
+  display: inline-block;
+  margin: 4px;
+}

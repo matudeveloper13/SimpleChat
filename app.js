@@ -34,28 +34,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Comprehensive list of prohibited words and slurs (all lowercase)
 const forbiddenWords = [
-  "nigger",
-  "nigga",
-  "negro",
-  "faggot",
-  "fag",
-  "retard",
-  "tranny",
-  "kike",
-  "spic",
-  "chink",
-  "wetback",
-  "coon",
-  "dyke",
-  "whore",
-  "slut",
-  "cunt",
-  "bastard",
-  "motherfucker",
-  "pussy",
-  "dick"
+  "nigger", "nigga", "negro", "faggot", "fag", "retard", "tranny", "kike", 
+  "spic", "chink", "wetback", "coon", "dyke", "whore", "slut", "cunt", 
+  "bastard", "motherfucker", "pussy", "dick"
 ];
 
 function containsProfanity(username) {
@@ -63,7 +45,6 @@ function containsProfanity(username) {
   return forbiddenWords.some(word => cleanedUsername.includes(word));
 }
 
-// DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const currentUserText = document.getElementById("current-user-text");
@@ -84,7 +65,6 @@ const emojiBtn = document.getElementById("emoji-btn");
 const typingIndicator = document.getElementById("typing-indicator");
 const typingText = document.getElementById("typing-text");
 
-// Profile Elements
 const topLeftProfile = document.getElementById("top-left-profile");
 const myMiniAvatar = document.getElementById("my-mini-avatar");
 const myMiniUsername = document.getElementById("my-mini-username");
@@ -108,7 +88,6 @@ const viewUserAvatar = document.getElementById("view-user-avatar");
 const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 
-// Ban Elements
 const banOverlay = document.getElementById("ban-overlay");
 const dismissBanBtn = document.getElementById("dismiss-ban-btn");
 
@@ -121,7 +100,6 @@ dismissBanBtn.addEventListener("click", async () => {
 let currentUsername = "";
 let currentAvatar = "avatar1.png";
 let currentBio = "";
-
 const userAvatarCache = {};
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -141,22 +119,11 @@ const formatTime = (timestamp) => {
   const isThisYear = date.getFullYear() === now.getFullYear();
 
   if (isToday) {
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true
-    }).format(date);
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(date);
   } else if (isThisYear) {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric"
-    }).format(date);
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
   } else {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric"
-    }).format(date);
+    return new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric", year: "numeric" }).format(date);
   }
 };
 
@@ -183,11 +150,7 @@ topLeftProfile.addEventListener("click", () => {
 });
 
 closeProfileModal.addEventListener("click", () => profileOverlay.classList.add("hidden"));
-
-openAvatarSelector.addEventListener("click", () => {
-  avatarSelectorOverlay.classList.remove("hidden");
-});
-
+openAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.remove("hidden"));
 closeAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
 presetAvatars.forEach(img => {
@@ -200,11 +163,7 @@ presetAvatars.forEach(img => {
 
     if (currentUsername) {
       userAvatarCache[currentUsername] = currentAvatar;
-      await setDoc(doc(db, "users", currentUsername), {
-        avatar: currentAvatar,
-        bio: currentBio
-      }, { merge: true });
-
+      await setDoc(doc(db, "users", currentUsername), { avatar: currentAvatar, bio: currentBio }, { merge: true });
       triggerRerender();
     }
   });
@@ -220,10 +179,7 @@ saveBioBtn.addEventListener("click", async () => {
   if (!currentUsername) return;
   currentBio = bioInput.value.trim();
   try {
-    await setDoc(doc(db, "users", currentUsername), {
-      avatar: currentAvatar,
-      bio: currentBio
-    }, { merge: true });
+    await setDoc(doc(db, "users", currentUsername), { avatar: currentAvatar, bio: currentBio }, { merge: true });
     profileOverlay.classList.add("hidden");
   } catch (err) {
     console.error("Error saving bio:", err);
@@ -260,7 +216,6 @@ registerForm.addEventListener("submit", async (e) => {
     authError.textContent = "Username must be at least 2 characters.";
     return;
   }
-
   if (containsProfanity(username)) {
     authError.textContent = "That username is not allowed. Please choose a different name.";
     return;
@@ -269,14 +224,8 @@ registerForm.addEventListener("submit", async (e) => {
   try {
     authError.textContent = "Creating account...";
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
-    
     const assignedAvatar = getRandomAvatar();
-    await setDoc(doc(db, "users", username), {
-      avatar: assignedAvatar,
-      bio: "",
-      banned: false
-    });
-
+    await setDoc(doc(db, "users", username), { avatar: assignedAvatar, bio: "", banned: false });
     authOverlay.classList.add("hidden");
   } catch (err) {
     if (err.code === "auth/email-already-in-use") authError.textContent = "Username is already taken.";
@@ -308,12 +257,10 @@ onAuthStateChanged(auth, async (user) => {
       const userSnap = await getDoc(doc(db, "users", currentUsername));
       if (userSnap.exists()) {
         const data = userSnap.data();
-        
         if (data.banned === true) {
           banOverlay.classList.remove("hidden");
           return;
         }
-
         currentAvatar = data.avatar || getRandomAvatar();
         currentBio = data.bio || "";
       } else {
@@ -371,7 +318,6 @@ messageForm.addEventListener("submit", async (e) => {
   const text = messageInput.value.trim();
   if (!text || !currentUsername) return;
 
-  // 650 character limit check
   if (text.length > 650) {
     alert(`Your message is too long (${text.length} characters). Please delete until it is 649 characters or fewer.`);
     return;
@@ -392,6 +338,24 @@ messageForm.addEventListener("submit", async (e) => {
 });
 
 let lastSnapshot = null;
+let videoObserver = null;
+
+// IntersectionObserver setup to automatically play/pause videos based on visibility
+function setupVideoObserver() {
+  if (videoObserver) videoObserver.disconnect();
+
+  videoObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const video = entry.target;
+      if (entry.isIntersecting) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  }, { threshold: 0.1 });
+}
+
 async function renderMessages(snapshot) {
   lastSnapshot = snapshot;
   if (snapshot.empty) {
@@ -399,6 +363,8 @@ async function renderMessages(snapshot) {
     return;
   }
   
+  setupVideoObserver();
+
   const docsArray = [];
   snapshot.forEach(docSnap => docsArray.push(docSnap));
   docsArray.sort((a, b) => {
@@ -447,6 +413,11 @@ async function renderMessages(snapshot) {
       el.addEventListener("click", () => {
         openUserProfileModal(el.getAttribute("data-username"));
       });
+    });
+
+    // Register all sent video elements with the IntersectionObserver
+    msgEl.querySelectorAll("video.inline-chat-video-emoji").forEach(video => {
+      videoObserver.observe(video);
     });
 
     fragment.appendChild(msgEl);
