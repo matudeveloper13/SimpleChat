@@ -13,10 +13,13 @@ import {
   query, 
   orderBy, 
   onSnapshot, 
-  serverTimestamp 
+  serverTimestamp,
+  doc,
+  setDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your Firebase Config
+// Your exact Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
   authDomain: "simplechat-e1787.firebaseapp.com",
@@ -48,6 +51,11 @@ const messageInput = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
 const messagesContainer = document.getElementById("messages-container");
 
+const emojiBtn = document.getElementById("emoji-btn");
+const emojiPickerContainer = document.getElementById("emoji-picker-container");
+const typingIndicator = document.getElementById("typing-indicator");
+const typingText = document.getElementById("typing-text");
+
 let currentUsername = "";
 
 // Security and Formatting Helpers
@@ -75,7 +83,6 @@ const switchTab = (activeTab, inactiveTab, activeForm, inactiveForm) => {
 
 tabRegister.addEventListener("click", () => switchTab(tabRegister, tabLogin, registerForm, loginForm));
 tabLogin.addEventListener("click", () => switchTab(tabLogin, tabRegister, loginForm, registerForm));
-
 authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
 closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
 
@@ -95,12 +102,8 @@ registerForm.addEventListener("submit", async (e) => {
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     authOverlay.classList.add("hidden");
   } catch (err) {
-    console.error("Firebase Auth Error:", err);
-    if (err.code === "auth/email-already-in-use") {
-      authError.textContent = "Username is already taken.";
-    } else {
-      authError.textContent = "Registration error: " + err.message;
-    }
+    if (err.code === "auth/email-already-in-use") authError.textContent = "Username is already taken.";
+    else authError.textContent = "Registration error: " + err.message;
   }
 });
 
@@ -128,17 +131,48 @@ onAuthStateChanged(auth, (user) => {
     authModalBtn.classList.add("hidden");
     logoutBtn.classList.remove("hidden");
     messageInput.disabled = false;
-    messageInput.placeholder = "Type your message...";
+    messageInput.placeholder = "Message...";
     sendBtn.disabled = false;
+    emojiBtn.disabled = false;
   } else {
     currentUsername = "";
     currentUserText.textContent = "Guest";
     authModalBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     messageInput.disabled = true;
-    messageInput.placeholder = "Sign in to start typing...";
+    messageInput.placeholder = "Sign in to chat...";
     sendBtn.disabled = true;
+    emojiBtn.disabled = true;
   }
+});
+
+// Emoji Picker Logic
+emojiBtn.addEventListener("click", () => {
+  emojiPickerContainer.classList.toggle("hidden");
+});
+document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+  messageInput.value += event.detail.unicode;
+  messageInput.focus();
+  emojiPickerContainer.classList.add("hidden");
+});
+// Hide picker if clicked outside
+document.addEventListener("click", (e) => {
+  if (!emojiBtn.contains(e.target) && !emojiPickerContainer.contains(e.target)) {
+    emojiPickerContainer.classList.add("hidden");
+  }
+});
+
+// Typing Indicator Logic
+let typingTimeout = null;
+messageInput.addEventListener("input", async () => {
+  if (!currentUsername) return;
+  const userRef = doc(db, "typing", currentUsername);
+  await setDoc(userRef, { isTyping: true });
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(async () => {
+    await deleteDoc(userRef);
+  }, 2000);
 });
 
 // Messaging
@@ -148,6 +182,10 @@ messageForm.addEventListener("submit", async (e) => {
   if (!text || !currentUsername) return;
 
   messageInput.value = "";
+  emojiPickerContainer.classList.add("hidden");
+  
+  // Clear typing status immediately upon sending
+  await deleteDoc(doc(db, "typing", currentUsername));
   
   try {
     await addDoc(collection(db, "messages"), {
@@ -160,7 +198,7 @@ messageForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Realtime Feed
+// Realtime Feed (Messages)
 const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
 onSnapshot(q, (snapshot) => {
   if (snapshot.empty) {
@@ -172,9 +210,11 @@ onSnapshot(q, (snapshot) => {
   snapshot.forEach((doc) => {
     const msg = doc.data();
     const timeString = formatTime(msg.timestamp);
+    const isMe = msg.username === currentUsername;
+    const alignClass = isMe ? "sent" : "received";
     
     const msgEl = document.createElement("div");
-    msgEl.className = "msg";
+    msgEl.className = `msg ${alignClass}`;
     msgEl.innerHTML = `
       <div class="msg-header">
         <span class="msg-author">${msg.username || "anonymous"}</span>
@@ -186,4 +226,28 @@ onSnapshot(q, (snapshot) => {
   });
   
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+});
+
+// Realtime Feed (Typing Status)
+const typingQ = query(collection(db, "typing"));
+onSnapshot(typingQ, (snapshot) => {
+  const typingUsers = [];
+  snapshot.forEach(doc => {
+    if (doc.id !== currentUsername && doc.data().isTyping) {
+      typingUsers.push(doc.id);
+    }
+  });
+
+  if (typingUsers.length > 0) {
+    typingIndicator.classList.remove("hidden");
+    if (typingUsers.length === 1) {
+      typingText.textContent = `${typingUsers[0]} is typing...`;
+    } else {
+      typingText.textContent = "Multiple people are typing...";
+    }
+    // Keep scrolled to bottom if someone starts typing
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  } else {
+    typingIndicator.classList.add("hidden");
+  }
 });

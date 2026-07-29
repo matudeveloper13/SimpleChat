@@ -6,8 +6,6 @@
   <title>SimpleChat</title>
   <link rel="icon" type="image/png" href="icon.png" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Emoji Picker Library -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 </head>
 <body>
   <main class="chat-container">
@@ -42,13 +40,8 @@
 
     <!-- Input Area with Emoji Button -->
     <div class="input-section">
-      <!-- Hidden Emoji Picker -->
-      <div id="emoji-picker-container" class="hidden">
-        <emoji-picker></emoji-picker>
-      </div>
-      
       <form id="message-form" class="message-form">
-        <button type="button" id="emoji-btn" class="btn-emoji" disabled>😀</button>
+        <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard (Win + . or Cmd + Ctrl + Space)" disabled>😀</button>
         <div class="input-wrapper">
           <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
         </div>
