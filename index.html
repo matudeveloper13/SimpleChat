@@ -1,101 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SimpleChat</title>
-  <link rel="icon" type="image/png" href="icon.png" />
-  <link rel="stylesheet" href="style.css" />
-  <!-- Emoji Picker Library -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="chat-container">
-    
-    <!-- Header -->
-    <header class="header">
-      <div class="logo-group">
-        <div class="status-indicator">
-          <span class="pulse"></span>
-        </div>
+
+  <!-- Top Left User Profile Snippet -->
+  <div id="top-left-profile" class="top-left-profile hidden">
+    <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle">
+    <span id="my-mini-username">Username</span>
+  </div>
+
+  <div class="chat-container">
+    <header class="chat-header">
+      <div class="header-title">
         <h1>SimpleChat</h1>
       </div>
-      <div id="user-status" class="user-status">
-        <span id="current-user-text">Guest</span>
-        <button id="auth-modal-btn" class="btn btn-outline">Sign In</button>
-        <button id="logout-btn" class="btn btn-outline hidden">Log Out</button>
+      <div class="header-actions">
+        <span id="current-user-text" class="current-user">Guest</span>
+        <button id="auth-modal-btn" class="btn-primary">Sign In / Register</button>
+        <button id="logout-btn" class="btn-secondary hidden">Sign Out</button>
       </div>
     </header>
 
-    <!-- Message Feed -->
-    <div id="messages-container" class="messages-box">
+    <div id="messages-container" class="messages-container">
       <div class="empty-state">Loading messages...</div>
     </div>
 
-    <!-- Typing Indicator Area -->
-    <div id="typing-indicator" class="typing-wrapper hidden">
-      <div class="typing-bubble">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      </div>
+    <div id="typing-indicator" class="typing-indicator hidden">
       <span id="typing-text">Someone is typing...</span>
     </div>
 
-    <!-- Input Area with Emoji Button -->
-    <div class="input-section">
-      <!-- Hidden Emoji Picker -->
-      <div id="emoji-picker-container" class="hidden">
-        <emoji-picker></emoji-picker>
-      </div>
-      
-      <form id="message-form" class="message-form">
-        <button type="button" id="emoji-btn" class="btn-emoji" disabled>😀</button>
-        <div class="input-wrapper">
-          <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
-        </div>
-        <button type="submit" id="send-btn" class="btn btn-primary" disabled>
-          Send
-        </button>
-      </form>
-    </div>
-
-  </main>
+    <form id="message-form" class="message-form">
+      <button type="button" id="emoji-btn" class="emoji-btn" disabled>😀</button>
+      <input type="text" id="message-input" placeholder="Sign in to chat..." autocomplete="off" disabled>
+      <button type="submit" id="send-btn" class="send-btn" disabled>Send</button>
+    </form>
+  </div>
 
   <!-- Auth Modal -->
-  <div id="auth-overlay" class="overlay hidden">
+  <div id="auth-overlay" class="modal-overlay hidden">
     <div class="modal">
-      <div class="tab-header">
-        <button id="tab-register" class="tab-btn active">Register</button>
-        <button id="tab-login" class="tab-btn">Login</button>
+      <button id="close-modal-btn" class="close-modal">&times;</button>
+      <div class="auth-tabs">
+        <button id="tab-login" class="tab-btn active">Sign In</button>
+        <button id="tab-register" class="tab-btn">Register</button>
       </div>
 
-      <!-- Register -->
-      <form id="register-form" class="auth-form">
-        <div class="input-group">
-          <label for="register-username">Username</label>
-          <input type="text" id="register-username" placeholder="e.g. Alex" required />
-        </div>
-        <div class="input-group">
-          <label for="register-password">Password</label>
-          <input type="password" id="register-password" placeholder="••••••••" required />
-        </div>
-        <button type="submit" class="btn btn-primary full-width">Create Account</button>
+      <form id="login-form" class="auth-form">
+        <h2>Welcome Back</h2>
+        <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
+        <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+        <button type="submit" class="btn-submit">Sign In</button>
       </form>
 
-      <!-- Login -->
-      <form id="login-form" class="auth-form hidden">
-        <div class="input-group">
-          <label for="login-username">Username</label>
-          <input type="text" id="login-username" placeholder="e.g. Alex" required />
-        </div>
-        <div class="input-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="••••••••" required />
-        </div>
-        <button type="submit" class="btn btn-primary full-width">Sign In</button>
+      <form id="register-form" class="auth-form hidden">
+        <h2>Create Account</h2>
+        <input type="text" id="register-username" placeholder="Choose a Username" required autocomplete="username">
+        <input type="password" id="register-password" placeholder="Choose a Password" required autocomplete="new-password">
+        <button type="submit" class="btn-submit">Register</button>
       </form>
 
-      <p id="auth-error" class="error-msg"></p>
-      <button id="close-modal-btn" class="btn-text">Cancel</button>
+      <div id="auth-error" class="auth-error"></div>
+    </div>
+  </div>
+
+  <!-- Profile & Bio Modal -->
+  <div id="profile-overlay" class="modal-overlay hidden">
+    <div class="modal profile-modal">
+      <button id="close-profile-modal" class="close-modal">&times;</button>
+      <h2>My Profile</h2>
+      <div class="profile-edit-container">
+        <div class="avatar-container-clickable" id="open-avatar-selector" title="Click to change avatar">
+          <img id="edit-modal-avatar" src="avatar1.png" alt="My Avatar" class="profile-circle large-avatar">
+          <div class="avatar-edit-overlay">Change</div>
+        </div>
+        <p class="fixed-username-label">Username: <span id="profile-display-username"></span></p>
+      </div>
+      
+      <div class="bio-section">
+        <label for="bio-input">Bio (max 150 characters):</label>
+        <textarea id="bio-input" maxlength="150" placeholder="Tell everyone a little about yourself..."></textarea>
+        <span id="bio-char-count">150 characters left</span>
+        <button id="save-bio-btn" class="btn-submit">Save Bio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar Selector Modal -->
+  <div id="avatar-selector-overlay" class="modal-overlay hidden">
+    <div class="modal avatar-selector-modal">
+      <button id="close-avatar-selector" class="close-modal">&times;</button>
+      <h2>Choose an Avatar</h2>
+      <div class="avatar-grid">
+        <img src="avatar1.png" class="preset-avatar profile-circle" data-avatar="avatar1.png">
+        <img src="avatar2.png" class="preset-avatar profile-circle" data-avatar="avatar2.png">
+        <img src="avatar3.png" class="preset-avatar profile-circle" data-avatar="avatar3.png">
+        <img src="avatar4.png" class="preset-avatar profile-circle" data-avatar="avatar4.png">
+        <img src="avatar5.png" class="preset-avatar profile-circle" data-avatar="avatar5.png">
+      </div>
+    </div>
+  </div>
+
+  <!-- View Other User Profile Modal -->
+  <div id="view-profile-overlay" class="modal-overlay hidden">
+    <div class="modal profile-modal">
+      <button id="close-view-profile" class="close-modal">&times;</button>
+      <div class="profile-edit-container">
+        <img id="view-user-avatar" src="avatar1.png" alt="User Avatar" class="profile-circle large-avatar">
+        <h2 id="view-user-name" style="margin-top: 10px;">Username</h2>
+      </div>
+      <div class="bio-display-section">
+        <p><strong>Bio:</strong></p>
+        <p id="view-user-bio" class="bio-text-box">No bio available.</p>
+      </div>
     </div>
   </div>
 
