@@ -70,10 +70,23 @@
       <span id="typing-text">Someone is typing...</span>
     </div>
 
-    <!-- Input Area with Emoji Button -->
+    <!-- Input Area with Discord-Style Emoji Picker Popover -->
     <div class="input-section">
       <form id="message-form" class="message-form">
-        <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard" disabled>😀</button>
+        <div style="position: relative;">
+          <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard">😀</button>
+          
+          <!-- Discord Emoji Popup Picker -->
+          <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
+            <div class="discord-emoji-search-box">
+              <input type="text" id="emoji-search-input" placeholder="Search emoji..." autocomplete="off" />
+            </div>
+            <div class="discord-emoji-scroll-area" id="discord-emoji-grid">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
         <div class="input-wrapper">
           <input type="text" id="message-input" placeholder="Message..." disabled required autocomplete="off" />
         </div>
@@ -124,7 +137,7 @@
     </div>
   </div>
 
-  <!-- Settings Modal (Dark/Light Mode UI like Profile UI) -->
+  <!-- Settings Modal -->
   <div id="settings-overlay" class="overlay hidden">
     <div class="modal settings-modal">
       <h2>Settings</h2>
@@ -193,7 +206,7 @@
     </div>
   </div>
 
-  <!-- Script logic for background stars, settings modal, and music toggle -->
+  <!-- Inline Script for Background Stars, Music, and Emoji Picker Logic -->
   <script>
     const starsContainer = document.getElementById("stars-container");
     for (let i = 0; i < 50; i++) {
@@ -230,13 +243,8 @@
     const lightModeBtn = document.getElementById("light-mode-btn");
     const darkModeBtn = document.getElementById("dark-mode-btn");
 
-    settingsBtn.addEventListener("click", () => {
-      settingsOverlay.classList.remove("hidden");
-    });
-
-    closeSettingsBtn.addEventListener("click", () => {
-      settingsOverlay.classList.add("hidden");
-    });
+    settingsBtn.addEventListener("click", () => settingsOverlay.classList.remove("hidden"));
+    closeSettingsBtn.addEventListener("click", () => settingsOverlay.classList.add("hidden"));
 
     lightModeBtn.addEventListener("click", () => {
       document.body.classList.remove("dark-mode");
@@ -248,6 +256,64 @@
       document.body.classList.add("dark-mode");
       darkModeBtn.className = "btn btn-primary";
       lightModeBtn.className = "btn btn-outline";
+    });
+
+    // Discord Emoji Picker Toggle & Population Logic
+    const emojiBtn = document.getElementById("emoji-btn");
+    const emojiPicker = document.getElementById("discord-emoji-picker");
+    const emojiGrid = document.getElementById("discord-emoji-grid");
+    const messageInput = document.getElementById("message-input");
+
+    const popularEmojis = [
+      "😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀",
+      "🙏", "👌", "❤️", "😊", "😢", "💯", "✨", "🎉", "😎", "🥳",
+      "🙌", "👏", "💪", "💩", "👻", "⚡", "🌟", "🎯", "🚀", "👑"
+    ];
+
+    const avatarEmojis = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+
+    function renderEmojis() {
+      emojiGrid.innerHTML = "";
+      
+      // Render avatar emojis first (scaled to normal emoji size)
+      avatarEmojis.forEach(avatar => {
+        const img = document.createElement("img");
+        img.src = avatar;
+        img.className = "discord-avatar-emoji-item";
+        img.title = avatar;
+        img.addEventListener("click", () => {
+          messageInput.value += ` ![avatar](${avatar}) `;
+          emojiPicker.classList.add("hidden");
+          messageInput.focus();
+        });
+        emojiGrid.appendChild(img);
+      });
+
+      // Render standard popular emojis
+      popularEmojis.forEach(emoji => {
+        const span = document.createElement("span");
+        span.className = "discord-emoji-item";
+        span.textContent = emoji;
+        span.addEventListener("click", () => {
+          messageInput.value += emoji;
+          emojiPicker.classList.add("hidden");
+          messageInput.focus();
+        });
+        emojiGrid.appendChild(span);
+      });
+    }
+
+    renderEmojis();
+
+    emojiBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      emojiPicker.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+        emojiPicker.classList.add("hidden");
+      }
     });
   </script>
 

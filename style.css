@@ -349,7 +349,6 @@ body {
   border-radius: 14px 14px 14px 2px;
 }
 
-/* Reply Context Line matching your screenshot reference */
 .reply-context-box {
   font-size: 12px;
   background: rgba(0,0,0,0.06);
@@ -361,7 +360,6 @@ body {
   text-align: left;
 }
 
-/* Discord Hover Action Bar for Reply */
 .msg-hover-actions {
   position: absolute;
   top: -12px;
@@ -461,12 +459,14 @@ body {
   padding: 16px 20px;
   background-color: var(--card-bg);
   border-top: 1px solid var(--border-color);
+  position: relative;
 }
 
 .message-form {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
 }
 
 .btn-emoji {
@@ -475,6 +475,76 @@ body {
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
+}
+
+/* Discord Emoji Picker Popover (Half the size, styled like Discord) */
+.discord-emoji-picker {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  width: 210px;
+  height: 220px;
+  background-color: #2f3136;
+  border: 1px solid #202225;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  padding: 8px;
+}
+
+.discord-emoji-search-box {
+  margin-bottom: 6px;
+}
+
+.discord-emoji-search-box input {
+  width: 100%;
+  background-color: #202225;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #dcddde;
+  font-size: 11px;
+  outline: none;
+}
+
+.discord-emoji-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+  padding: 4px;
+}
+
+.discord-emoji-item {
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.discord-emoji-item:hover {
+  background-color: #393c43;
+}
+
+.discord-avatar-emoji-item {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  padding: 1px;
+  border: 1px solid transparent;
+  transition: background 0.1s;
+}
+
+.discord-avatar-emoji-item:hover {
+  background-color: #393c43;
+  border-color: var(--primary);
 }
 
 .input-wrapper {
