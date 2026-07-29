@@ -50,6 +50,7 @@ const messageForm = document.getElementById("message-form");
 const messageInput = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
 const messagesContainer = document.getElementById("messages-container");
+
 const emojiBtn = document.getElementById("emoji-btn");
 const typingIndicator = document.getElementById("typing-indicator");
 const typingText = document.getElementById("typing-text");
@@ -79,7 +80,7 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 
 let currentUsername = "";
-let currentAvatar = "avatar1.png"; // Default to avatar 1
+let currentAvatar = "avatar1.png"; // Default profile 1
 let currentBio = "";
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -96,60 +97,39 @@ const formatTime = (timestamp) => {
 };
 
 // UI Toggles
-if (tabRegister && tabLogin && registerForm && loginForm) {
-  tabRegister.addEventListener("click", () => {
-    tabRegister.classList.add("active");
-    tabLogin.classList.remove("active");
-    registerForm.classList.remove("hidden");
-    loginForm.classList.add("hidden");
-    if (authError) authError.textContent = "";
-  });
+const switchTab = (activeTab, inactiveTab, activeForm, inactiveForm) => {
+  activeTab.classList.add("active");
+  inactiveTab.classList.remove("active");
+  activeForm.classList.remove("hidden");
+  inactiveForm.classList.add("hidden");
+  authError.textContent = "";
+};
 
-  tabLogin.addEventListener("click", () => {
-    tabLogin.classList.add("active");
-    tabRegister.classList.remove("active");
-    loginForm.classList.remove("hidden");
-    registerForm.classList.add("hidden");
-    if (authError) authError.textContent = "";
-  });
-}
+tabRegister.addEventListener("click", () => switchTab(tabRegister, tabLogin, registerForm, loginForm));
+tabLogin.addEventListener("click", () => switchTab(tabLogin, tabRegister, loginForm, registerForm));
+authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
+closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
 
-if (authModalBtn && authOverlay) {
-  authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
-}
+// Open Profile Modal (top-left click)
+topLeftProfile.addEventListener("click", () => {
+  if (!currentUsername) return;
+  editModalAvatar.src = currentAvatar;
+  profileDisplayUsername.textContent = currentUsername;
+  bioInput.value = currentBio;
+  updateCharCount();
+  profileOverlay.classList.remove("hidden");
+});
 
-if (closeModalBtn && authOverlay) {
-  closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
-}
+closeProfileModal.addEventListener("click", () => profileOverlay.classList.add("hidden"));
 
-// Open My Profile Modal when clicking top-left profile
-if (topLeftProfile) {
-  topLeftProfile.addEventListener("click", () => {
-    if (!currentUsername) return;
-    editModalAvatar.src = currentAvatar;
-    profileDisplayUsername.textContent = currentUsername;
-    bioInput.value = currentBio;
-    updateCharCount();
-    profileOverlay.classList.remove("hidden");
-  });
-}
+// Open Avatar Picker
+openAvatarSelector.addEventListener("click", () => {
+  avatarSelectorOverlay.classList.remove("hidden");
+});
 
-if (closeProfileModal) {
-  closeProfileModal.addEventListener("click", () => profileOverlay.classList.add("hidden"));
-}
+closeAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
-// Open Preset Avatar Selector
-if (openAvatarSelector) {
-  openAvatarSelector.addEventListener("click", () => {
-    avatarSelectorOverlay.classList.remove("hidden");
-  });
-}
-
-if (closeAvatarSelector) {
-  closeAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
-}
-
-// Select a preset avatar
+// Choose Preset Avatar
 presetAvatars.forEach(img => {
   img.addEventListener("click", async () => {
     const selected = img.getAttribute("data-avatar");
@@ -158,7 +138,6 @@ presetAvatars.forEach(img => {
     myMiniAvatar.src = selected;
     avatarSelectorOverlay.classList.add("hidden");
 
-    // Save automatically to Firestore
     if (currentUsername) {
       await setDoc(doc(db, "users", currentUsername), {
         avatar: currentAvatar,
@@ -168,50 +147,35 @@ presetAvatars.forEach(img => {
   });
 });
 
-// Bio Character Countdown
-if (bioInput) {
-  bioInput.addEventListener("input", () => {
-    updateCharCount();
-  });
-}
-
+// Bio Counter
+bioInput.addEventListener("input", updateCharCount);
 function updateCharCount() {
   const remaining = 150 - bioInput.value.length;
   bioCharCount.textContent = `${remaining} characters left`;
 }
 
 // Save Bio
-if (saveBioBtn) {
-  saveBioBtn.addEventListener("click", async () => {
-    if (!currentUsername) return;
-    currentBio = bioInput.value.trim();
-    
-    try {
-      await setDoc(doc(db, "users", currentUsername), {
-        avatar: currentAvatar,
-        bio: currentBio
-      }, { merge: true });
-      profileOverlay.classList.add("hidden");
-    } catch (err) {
-      console.error("Error saving bio:", err);
-    }
-  });
-}
+saveBioBtn.addEventListener("click", async () => {
+  if (!currentUsername) return;
+  currentBio = bioInput.value.trim();
+  try {
+    await setDoc(doc(db, "users", currentUsername), {
+      avatar: currentAvatar,
+      bio: currentBio
+    }, { merge: true });
+    profileOverlay.classList.add("hidden");
+  } catch (err) {
+    console.error("Error saving bio:", err);
+  }
+});
 
-// Close other user's profile view modal
-if (closeViewProfile) {
-  closeViewProfile.addEventListener("click", () => viewUserOverlayClose());
-}
-function viewUserOverlayClose() {
-  viewProfileOverlay.classList.add("hidden");
-}
+// View other user profile modal close
+closeViewProfile.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
-// Function to view any user's profile by username
+// Fetch and display any user's profile
 async function openUserProfileModal(username) {
   try {
-    const userDocRef = doc(db, "users", username);
-    const userSnap = await getDoc(userDocRef);
-    
+    const userSnap = await getDoc(doc(db, "users", username));
     if (userSnap.exists()) {
       const data = userSnap.data();
       viewUserAvatar.src = data.avatar || "avatar1.png";
@@ -224,72 +188,63 @@ async function openUserProfileModal(username) {
     }
     viewProfileOverlay.classList.remove("hidden");
   } catch (err) {
-    console.error("Error fetching user profile:", err);
+    console.error("Error fetching profile:", err);
   }
 }
 
-// Authentication handling
-if (registerForm) {
-  registerForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const username = document.getElementById("register-username").value.trim();
-    const password = document.getElementById("register-password").value;
+// Authentication
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("register-username").value.trim();
+  const password = document.getElementById("register-password").value;
 
-    if (username.length < 2) {
-      if (authError) authError.textContent = "Username must be at least 2 characters.";
-      return;
-    }
+  if (username.length < 2) {
+    authError.textContent = "Username must be at least 2 characters.";
+    return;
+  }
 
-    try {
-      if (authError) authError.textContent = "Creating account...";
-      await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
-      
-      // Initialize default user record with avatar1.png
-      await setDoc(doc(db, "users", username), {
-        avatar: "avatar1.png",
-        bio: ""
-      });
+  try {
+    authError.textContent = "Creating account...";
+    await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+    
+    // Set initial profile record with default avatar1.png
+    await setDoc(doc(db, "users", username), {
+      avatar: "avatar1.png",
+      bio: ""
+    });
 
-      if (authOverlay) authOverlay.classList.add("hidden");
-    } catch (err) {
-      if (authError) {
-        if (err.code === "auth/email-already-in-use") authError.textContent = "Username is already taken.";
-        else authError.textContent = "Registration error: " + err.message;
-      }
-    }
-  });
-}
+    authOverlay.classList.add("hidden");
+  } catch (err) {
+    if (err.code === "auth/email-already-in-use") authError.textContent = "Username is already taken.";
+    else authError.textContent = "Registration error: " + err.message;
+  }
+});
 
-if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const username = document.getElementById("login-username").value.trim();
-    const password = document.getElementById("login-password").value;
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("login-username").value.trim();
+  const password = document.getElementById("login-password").value;
 
-    try {
-      if (authError) authError.textContent = "Signing in...";
-      await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
-      if (authOverlay) authOverlay.classList.add("hidden");
-    } catch (err) {
-      if (authError) authError.textContent = "Invalid username or password.";
-    }
-  });
-}
+  try {
+    authError.textContent = "Signing in...";
+    await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+    authOverlay.classList.add("hidden");
+  } catch (err) {
+    authError.textContent = "Invalid username or password.";
+  }
+});
 
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => signOut(auth));
-}
+logoutBtn.addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUsername = user.email.split("@")[0];
-    if (currentUserText) currentUserText.textContent = currentUsername;
-    if (authModalBtn) authModalBtn.classList.add("hidden");
-    if (logoutBtn) logoutBtn.classList.remove("hidden");
-    if (topLeftProfile) topLeftProfile.classList.remove("hidden");
-    if (myMiniUsername) myMiniUsername.textContent = currentUsername;
+    currentUserText.textContent = currentUsername;
+    myMiniUsername.textContent = currentUsername;
+    authModalBtn.classList.add("hidden");
+    logoutBtn.classList.remove("hidden");
+    topLeftProfile.classList.remove("hidden");
 
-    // Fetch user profile data from Firestore
     try {
       const userSnap = await getDoc(doc(db, "users", currentUsername));
       if (userSnap.exists()) {
@@ -303,85 +258,72 @@ onAuthStateChanged(auth, async (user) => {
       }
       myMiniAvatar.src = currentAvatar;
     } catch (err) {
-      console.error("Error loading profile:", err);
+      console.error("Error loading user profile:", err);
     }
 
-    if (messageInput) {
-      messageInput.disabled = false;
-      messageInput.placeholder = "Message...";
-    }
-    if (sendBtn) sendBtn.disabled = false;
-    if (emojiBtn) emojiBtn.disabled = false;
+    messageInput.disabled = false;
+    messageInput.placeholder = "Message...";
+    sendBtn.disabled = false;
+    emojiBtn.disabled = false;
   } else {
     currentUsername = "";
     currentAvatar = "avatar1.png";
     currentBio = "";
-    if (currentUserText) currentUserText.textContent = "Guest";
-    if (authModalBtn) authModalBtn.classList.remove("hidden");
-    if (logoutBtn) logoutBtn.classList.add("hidden");
-    if (topLeftProfile) topLeftProfile.classList.add("hidden");
-    if (messageInput) {
-      messageInput.disabled = true;
-      messageInput.placeholder = "Sign in to chat...";
-    }
-    if (sendBtn) sendBtn.disabled = true;
-    if (emojiBtn) emojiBtn.disabled = true;
+    currentUserText.textContent = "Guest";
+    authModalBtn.classList.remove("hidden");
+    logoutBtn.classList.add("hidden");
+    topLeftProfile.classList.add("hidden");
+    messageInput.disabled = true;
+    messageInput.placeholder = "Sign in to start typing...";
+    sendBtn.disabled = true;
+    emojiBtn.disabled = true;
   }
 });
 
-// Emoji button shortcut
-if (emojiBtn && messageInput) {
-  emojiBtn.addEventListener("click", () => {
-    messageInput.focus();
-    if (navigator.platform.indexOf('Mac') > -1) {
-      alert("Tip: Press Cmd + Control + Space to open your Mac emoji keyboard!");
-    } else {
-      alert("Tip: Press Windows Key + . (period) to open your Windows emoji keyboard!");
-    }
-  });
-}
+// Emoji Keyboard Shortcut Trigger
+emojiBtn.addEventListener("click", () => {
+  messageInput.focus();
+  if (navigator.platform.indexOf('Mac') > -1) {
+    alert("Tip: Press Cmd + Control + Space to open your Mac emoji keyboard!");
+  } else {
+    alert("Tip: Press Windows Key + . (period) to open your Windows emoji keyboard!");
+  }
+});
 
 let typingTimeout = null;
-if (messageInput) {
-  messageInput.addEventListener("input", async () => {
-    if (!currentUsername) return;
-    const userRef = doc(db, "typing", currentUsername);
-    await setDoc(userRef, { isTyping: true });
+messageInput.addEventListener("input", async () => {
+  if (!currentUsername) return;
+  const userRef = doc(db, "typing", currentUsername);
+  await setDoc(userRef, { isTyping: true });
 
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(async () => {
-      await deleteDoc(userRef);
-    }, 2000);
-  });
-}
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(async () => {
+    await deleteDoc(userRef);
+  }, 2000);
+});
 
-if (messageForm && messageInput) {
-  messageForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = messageInput.value.trim();
-    if (!text || !currentUsername) return;
+messageForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = messageInput.value.trim();
+  if (!text || !currentUsername) return;
 
-    messageInput.value = "";
-    await deleteDoc(doc(db, "typing", currentUsername));
-    
-    try {
-      await addDoc(collection(db, "messages"), {
-        text: text,
-        username: currentUsername,
-        avatar: currentAvatar,
-        timestamp: serverTimestamp()
-      });
-    } catch (err) {
-      console.error("Error sending message:", err);
-    }
-  });
-}
+  messageInput.value = "";
+  await deleteDoc(doc(db, "typing", currentUsername));
+  
+  try {
+    await addDoc(collection(db, "messages"), {
+      text: text,
+      username: currentUsername,
+      avatar: currentAvatar,
+      timestamp: serverTimestamp()
+    });
+  } catch (err) {
+    console.error("Error sending message:", err);
+  }
+});
 
-// Listen to messages and render with avatars
 const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
 onSnapshot(q, (snapshot) => {
-  if (!messagesContainer) return;
-  
   if (snapshot.empty) {
     messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Be the first to say hello!</div>`;
     return;
@@ -398,7 +340,7 @@ onSnapshot(q, (snapshot) => {
     const msgEl = document.createElement("div");
     msgEl.className = `msg ${alignClass}`;
     msgEl.innerHTML = `
-      <img src="${userAvatar}" class="msg-avatar-img profile-circle" alt="avatar" data-username="${msg.username}">
+      <img src="${userAvatar}" class="msg-avatar-img profile-circle" alt="avatar" data-username="${msg.username}" />
       <div class="msg-content">
         <div class="msg-header">
           <span class="msg-author" data-username="${msg.username}">${msg.username || "anonymous"}</span>
@@ -408,7 +350,7 @@ onSnapshot(q, (snapshot) => {
       </div>
     `;
 
-    // Click event to view user profile when clicking avatar or name
+    // Click event to see profile when clicking someone's avatar or name in chat
     msgEl.querySelectorAll("[data-username]").forEach(el => {
       el.addEventListener("click", () => {
         openUserProfileModal(el.getAttribute("data-username"));
@@ -421,11 +363,8 @@ onSnapshot(q, (snapshot) => {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
 
-// Typing indicator snapshot
 const typingQ = query(collection(db, "typing"));
 onSnapshot(typingQ, (snapshot) => {
-  if (!typingIndicator || !typingText || !messagesContainer) return;
-  
   const typingUsers = [];
   snapshot.forEach(doc => {
     if (doc.id !== currentUsername && doc.data().isTyping) {
