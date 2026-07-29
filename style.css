@@ -9,8 +9,8 @@
   --bubble-received: #e4e6eb;
   --bubble-sent: #0084ff;
   --danger: #dc3545;
-  --dot-color: rgba(0, 0, 0, 0.25);
-  --body-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --star-color: #ffffff;
+  --body-gradient: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
 }
 
 body.dark-mode {
@@ -20,7 +20,7 @@ body.dark-mode {
   --text-muted: #b0b3b8;
   --border-color: #393a3b;
   --bubble-received: #3a3b3c;
-  --dot-color: rgba(255, 255, 255, 0.35);
+  --star-color: #ffffff;
   --body-gradient: linear-gradient(135deg, #090d16 0%, #15132b 100%);
 }
 
@@ -43,7 +43,6 @@ body {
   transition: background 0.3s ease;
 }
 
-/* Falling Dots Background Effect */
 .stars-container {
   position: absolute;
   top: 0;
@@ -57,80 +56,71 @@ body {
 
 .star {
   position: absolute;
-  background-color: var(--dot-color);
+  background-color: var(--star-color);
   border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
   animation: fall linear infinite;
 }
 
 @keyframes fall {
-  0% {
-    transform: translateY(-10vh) translateX(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.8;
-  }
-  80% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(110vh) translateX(-10vw);
-    opacity: 0;
-  }
+  0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(110vh) translateX(-5vw); opacity: 0; }
 }
 
-/* Absolute Upper-Left Website Corner Utility Bar */
-.absolute-top-left-corner {
+.absolute-discord-logo {
   position: absolute;
   top: 15px;
   left: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 10;
-}
-
-.utility-icon-btn {
-  width: 30px;
-  height: 30px;
-  background: var(--card-bg, #ffffff);
-  border: 1px solid var(--border-color, #e4e6eb);
+  width: 32px;
+  height: 32px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10;
   transition: transform 0.2s;
   text-decoration: none;
 }
 
-.utility-icon-btn img {
-  width: 16px;
-  height: 16px;
+.absolute-discord-logo img {
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
-.utility-emoji-btn {
-  width: 30px;
-  height: 30px;
-  background: var(--card-bg, #ffffff);
-  border: 1px solid var(--border-color, #e4e6eb);
+.absolute-discord-logo:hover {
+  transform: scale(1.1);
+}
+
+.absolute-music-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 34px;
+  height: 34px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 50%;
-  font-size: 13px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10;
+  opacity: 0.5;
   transition: transform 0.2s, opacity 0.2s;
-  opacity: 0.6;
 }
 
-.utility-icon-btn:hover, .utility-emoji-btn:hover {
+.absolute-music-btn:hover {
   transform: scale(1.1);
 }
 
-/* Chat Container */
 .chat-container {
   width: 100%;
   max-width: 800px;
@@ -139,7 +129,7 @@ body {
   background-color: var(--card-bg);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
   border-radius: 12px;
   overflow: hidden;
   z-index: 2;
@@ -152,7 +142,6 @@ body {
   }
 }
 
-/* Header */
 .header {
   padding: 16px 20px;
   background-color: var(--card-bg);
@@ -225,7 +214,6 @@ body {
   transform: rotate(45deg);
 }
 
-/* Buttons */
 .btn {
   padding: 8px 16px;
   border-radius: 6px;
@@ -272,7 +260,6 @@ body {
   width: 100%;
 }
 
-/* Messages Box */
 .messages-box {
   flex: 1;
   padding: 20px;
@@ -291,7 +278,6 @@ body {
   font-size: 14px;
 }
 
-/* Message Item Layout & Hover Action Bar */
 .msg {
   display: flex;
   align-items: flex-end;
@@ -363,19 +349,19 @@ body {
   border-radius: 14px 14px 14px 2px;
 }
 
-/* Quoted Reply inside a message with yellow accent line matching screenshot */
+/* Reply Context Line matching your screenshot reference */
 .reply-context-box {
   font-size: 12px;
   background: rgba(0,0,0,0.06);
   padding: 4px 8px;
   border-radius: 4px;
   margin-bottom: 4px;
-  border-left: 3px solid #ffc107; /* Yellow accent line */
+  border-left: 3px solid #ffc107;
   color: var(--text-muted);
   text-align: left;
 }
 
-/* Hover Action Bar (Discord Style) */
+/* Discord Hover Action Bar for Reply */
 .msg-hover-actions {
   position: absolute;
   top: -12px;
@@ -407,7 +393,6 @@ body {
   background-color: var(--bg-color);
 }
 
-/* Active Reply Preview above input */
 .reply-preview-container {
   padding: 6px 20px;
   background-color: var(--card-bg);
@@ -437,7 +422,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Typing Indicator */
 .typing-wrapper {
   padding: 6px 20px;
   display: flex;
@@ -473,7 +457,6 @@ body {
   40% { transform: scale(1.0); }
 }
 
-/* Input Section */
 .input-section {
   padding: 16px 20px;
   background-color: var(--card-bg);
@@ -513,7 +496,6 @@ body {
   border-color: var(--primary);
 }
 
-/* Modals & Overlays */
 .overlay {
   position: fixed;
   top: 0;
@@ -595,7 +577,6 @@ body {
   min-height: 16px;
 }
 
-/* Profile Modal Specifics */
 .profile-edit-container {
   display: flex;
   flex-direction: column;
@@ -672,7 +653,6 @@ body {
   margin-bottom: 10px;
 }
 
-/* Avatar Selector Modal */
 .avatar-selector-modal {
   max-width: 300px;
 }

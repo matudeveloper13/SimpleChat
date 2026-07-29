@@ -11,7 +11,7 @@
 </head>
 <body>
 
-  <!-- Falling Background Dots Container (Outside chat) -->
+  <!-- Falling Background Stars Container -->
   <div class="stars-container" id="stars-container"></div>
 
   <!-- Background Music (Loop enabled) -->
@@ -19,13 +19,13 @@
     <source src="relaxing.mp3" type="audio/mpeg">
   </audio>
 
-  <!-- Absolute Upper-Left Website Corner Utility Bar (Discord + Music) -->
-  <div class="absolute-top-left-corner">
-    <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="utility-icon-btn" title="Join Discord">
-      <img src="discord.png" alt="Discord" />
-    </a>
-    <button id="music-toggle-btn" class="utility-emoji-btn" title="Play/Pause Music">🎵</button>
-  </div>
+  <!-- Absolute Upper-Left Website Corner Discord Logo -->
+  <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="absolute-discord-logo" title="Join Discord">
+    <img src="discord.png" alt="Discord" />
+  </a>
+
+  <!-- Music Mute/Unmute Button in Upper Right -->
+  <button id="music-toggle-btn" class="absolute-music-btn" title="Play/Pause Music">🎵</button>
 
   <main class="chat-container">
     
@@ -41,11 +41,11 @@
         </div>
       </div>
       <div id="user-status" class="user-status">
-        <span id="current-user-text">Guest</span>
-        <!-- Theme Settings Gear Button -->
-        <button id="theme-toggle-btn" class="settings-gear-btn" title="Toggle Light/Dark Mode">⚙️</button>
-        <button id="auth-modal-btn" class="btn btn-outline">Sign In</button>
-        <button id="logout-btn" class="btn btn-outline hidden">Log Out</button>
+        <span id="current-user-text">matubanana2</span>
+        <!-- Settings Gear Button next to the username -->
+        <button id="settings-gear-btn" class="settings-gear-btn" title="Settings">⚙️</button>
+        <button id="auth-modal-btn" class="btn btn-outline hidden">Sign In</button>
+        <button id="logout-btn" class="btn btn-outline">Log Out</button>
       </div>
     </header>
 
@@ -75,7 +75,7 @@
       <form id="message-form" class="message-form">
         <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard" disabled>😀</button>
         <div class="input-wrapper">
-          <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
+          <input type="text" id="message-input" placeholder="Message..." disabled required autocomplete="off" />
         </div>
         <button type="submit" id="send-btn" class="btn btn-primary" disabled>
           Send
@@ -121,6 +121,23 @@
 
       <p id="auth-error" class="error-msg"></p>
       <button id="close-modal-btn" class="btn-text">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Dark/Light Mode UI like Profile UI) -->
+  <div id="settings-overlay" class="overlay hidden">
+    <div class="modal settings-modal">
+      <h2>Settings</h2>
+      <div class="settings-options-container" style="margin: 20px 0; display: flex; flex-direction: column; gap: 15px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 14px;">Theme Mode</span>
+          <div style="display: flex; gap: 8px;">
+            <button id="light-mode-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px;">Light Mode</button>
+            <button id="dark-mode-btn" class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;">Dark Mode</button>
+          </div>
+        </div>
+      </div>
+      <button id="close-settings-modal" class="btn btn-primary full-width">Done</button>
     </div>
   </div>
 
@@ -176,30 +193,28 @@
     </div>
   </div>
 
-  <!-- Script logic for dots, music loop toggle, and theme switching -->
+  <!-- Script logic for background stars, settings modal, and music toggle -->
   <script>
-    // Falling Relaxing Dots Generator
     const starsContainer = document.getElementById("stars-container");
-    for (let i = 0; i < 45; i++) {
-      const dot = document.createElement("div");
-      dot.className = "star";
-      dot.style.left = `${Math.random() * 100}vw`;
-      dot.style.top = `${Math.random() * -100}vh`;
-      dot.style.width = `${3 + Math.random() * 3}px`;
-      dot.style.height = dot.style.width;
-      dot.style.animationDuration = `${8 + Math.random() * 7}s`; // slow & relaxing
-      dot.style.animationDelay = `${Math.random() * 5}s`;
-      starsContainer.appendChild(dot);
+    for (let i = 0; i < 50; i++) {
+      const star = document.createElement("div");
+      star.className = "star";
+      star.style.left = `${Math.random() * 100}vw`;
+      star.style.top = `${Math.random() * -100}vh`;
+      star.style.width = `${2 + Math.random() * 3}px`;
+      star.style.height = star.style.width;
+      star.style.animationDuration = `${6 + Math.random() * 6}s`;
+      star.style.animationDelay = `${Math.random() * 5}s`;
+      starsContainer.appendChild(star);
     }
 
-    // Music Player Loop Toggle
     const music = document.getElementById("bg-music");
     const musicBtn = document.getElementById("music-toggle-btn");
     let isPlaying = false;
     musicBtn.addEventListener("click", () => {
       if (isPlaying) {
         music.pause();
-        musicBtn.style.opacity = "0.5";
+        musicBtn.style.opacity = "0.4";
         isPlaying = false;
       } else {
         music.play().then(() => {
@@ -209,16 +224,30 @@
       }
     });
 
-    // Theme Switcher (Light / Dark Mode via Gear Button)
-    const themeBtn = document.getElementById("theme-toggle-btn");
-    let isDark = false; // Default is light mode
-    themeBtn.addEventListener("click", () => {
-      isDark = !isDark;
-      if (isDark) {
-        document.body.classList.add("dark-mode");
-      } else {
-        document.body.classList.remove("dark-mode");
-      }
+    const settingsBtn = document.getElementById("settings-gear-btn");
+    const settingsOverlay = document.getElementById("settings-overlay");
+    const closeSettingsBtn = document.getElementById("close-settings-modal");
+    const lightModeBtn = document.getElementById("light-mode-btn");
+    const darkModeBtn = document.getElementById("dark-mode-btn");
+
+    settingsBtn.addEventListener("click", () => {
+      settingsOverlay.classList.remove("hidden");
+    });
+
+    closeSettingsBtn.addEventListener("click", () => {
+      settingsOverlay.classList.add("hidden");
+    });
+
+    lightModeBtn.addEventListener("click", () => {
+      document.body.classList.remove("dark-mode");
+      lightModeBtn.className = "btn btn-primary";
+      darkModeBtn.className = "btn btn-outline";
+    });
+
+    darkModeBtn.addEventListener("click", () => {
+      document.body.classList.add("dark-mode");
+      darkModeBtn.className = "btn btn-primary";
+      lightModeBtn.className = "btn btn-outline";
     });
   </script>
 
