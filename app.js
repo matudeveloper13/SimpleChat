@@ -16,14 +16,15 @@ import {
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// TODO: Paste your project configuration here!
+// Your Firebase Config
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
   authDomain: "simplechat-e1787.firebaseapp.com",
   projectId: "simplechat-e1787",
-  storageBucket: "simplechat-e1787.appspot.com",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
-  appId: "PASTE_YOUR_APP_ID_HERE"
+  storageBucket: "simplechat-e1787.firebasestorage.app",
+  messagingSenderId: "469168057769",
+  appId: "1:469168057769:web:d7f37ceae7b6d8227c28b8",
+  measurementId: "G-KDWQTRWZSQ"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -94,10 +95,11 @@ registerForm.addEventListener("submit", async (e) => {
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     authOverlay.classList.add("hidden");
   } catch (err) {
+    console.error("Firebase Auth Error:", err);
     if (err.code === "auth/email-already-in-use") {
       authError.textContent = "Username is already taken.";
     } else {
-      authError.textContent = "Failed to connect. Check your Firebase keys.";
+      authError.textContent = "Registration error: " + err.message;
     }
   }
 });
@@ -145,7 +147,7 @@ messageForm.addEventListener("submit", async (e) => {
   const text = messageInput.value.trim();
   if (!text || !currentUsername) return;
 
-  messageInput.value = ""; // Clear immediately for UX
+  messageInput.value = "";
   
   try {
     await addDoc(collection(db, "messages"), {
@@ -183,6 +185,5 @@ onSnapshot(q, (snapshot) => {
     messagesContainer.appendChild(msgEl);
   });
   
-  // Auto-scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
