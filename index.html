@@ -275,14 +275,14 @@
     function renderEmojis() {
       emojiGrid.innerHTML = "";
       
-      // Render avatar emojis first (scaled to normal, small round emoji size)
+      // Render avatar emojis as actual inline images sent to chat when clicked
       avatarEmojis.forEach(avatar => {
         const img = document.createElement("img");
         img.src = avatar;
         img.className = "discord-avatar-emoji-item";
         img.title = avatar;
         img.addEventListener("click", () => {
-          messageInput.value += ` ![avatar](${avatar}) `;
+          messageInput.value += ` <img src="${avatar}" class="inline-chat-avatar-emoji" alt="emoji" /> `;
           emojiPicker.classList.add("hidden");
           messageInput.focus();
         });

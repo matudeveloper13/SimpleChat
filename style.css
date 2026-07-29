@@ -349,6 +349,18 @@ body {
   border-radius: 14px 14px 14px 2px;
 }
 
+/* Rendered inline avatar image inside chat bubble */
+.inline-chat-avatar-emoji {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  display: inline-block;
+  margin: 0 2px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
 .reply-context-box {
   font-size: 12px;
   background: rgba(0,0,0,0.06);
@@ -531,7 +543,6 @@ body {
   background-color: #393c43;
 }
 
-/* Fixed: Avatar profile pictures as small, round, normal-sized emoji lookalikes */
 .discord-avatar-emoji-item {
   width: 18px;
   height: 18px;
