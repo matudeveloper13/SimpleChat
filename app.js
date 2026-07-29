@@ -80,7 +80,7 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 
 let currentUsername = "";
-let currentAvatar = "avatar1.png"; // Default profile 1
+let currentAvatar = "avatar1.png"; // Default to avatar 1
 let currentBio = "";
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -110,7 +110,7 @@ tabLogin.addEventListener("click", () => switchTab(tabLogin, tabRegister, loginF
 authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
 closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
 
-// Open Profile Modal (top-left click)
+// Profile Modal Toggles
 topLeftProfile.addEventListener("click", () => {
   if (!currentUsername) return;
   editModalAvatar.src = currentAvatar;
@@ -122,14 +122,14 @@ topLeftProfile.addEventListener("click", () => {
 
 closeProfileModal.addEventListener("click", () => profileOverlay.classList.add("hidden"));
 
-// Open Avatar Picker
+// Open Avatar Selector
 openAvatarSelector.addEventListener("click", () => {
   avatarSelectorOverlay.classList.remove("hidden");
 });
 
 closeAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
-// Choose Preset Avatar
+// Preset selection
 presetAvatars.forEach(img => {
   img.addEventListener("click", async () => {
     const selected = img.getAttribute("data-avatar");
@@ -169,10 +169,9 @@ saveBioBtn.addEventListener("click", async () => {
   }
 });
 
-// View other user profile modal close
+// View other profile modal
 closeViewProfile.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
-// Fetch and display any user's profile
 async function openUserProfileModal(username) {
   try {
     const userSnap = await getDoc(doc(db, "users", username));
@@ -188,7 +187,7 @@ async function openUserProfileModal(username) {
     }
     viewProfileOverlay.classList.remove("hidden");
   } catch (err) {
-    console.error("Error fetching profile:", err);
+    console.error("Error fetching user profile:", err);
   }
 }
 
@@ -207,7 +206,7 @@ registerForm.addEventListener("submit", async (e) => {
     authError.textContent = "Creating account...";
     await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
     
-    // Set initial profile record with default avatar1.png
+    // Default avatar1.png setup
     await setDoc(doc(db, "users", username), {
       avatar: "avatar1.png",
       bio: ""
@@ -258,7 +257,7 @@ onAuthStateChanged(auth, async (user) => {
       }
       myMiniAvatar.src = currentAvatar;
     } catch (err) {
-      console.error("Error loading user profile:", err);
+      console.error("Error loading profile:", err);
     }
 
     messageInput.disabled = false;
@@ -280,7 +279,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Emoji Keyboard Shortcut Trigger
+// Emoji Button Shortcut
 emojiBtn.addEventListener("click", () => {
   messageInput.focus();
   if (navigator.platform.indexOf('Mac') > -1) {
@@ -350,7 +349,7 @@ onSnapshot(q, (snapshot) => {
       </div>
     `;
 
-    // Click event to see profile when clicking someone's avatar or name in chat
+    // Click event to view profile when clicking name or avatar
     msgEl.querySelectorAll("[data-username]").forEach(el => {
       el.addEventListener("click", () => {
         openUserProfileModal(el.getAttribute("data-username"));

@@ -8,17 +8,16 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Top Left User Profile Widget -->
-  <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
-    <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
-    <span id="my-mini-username">Username</span>
-  </div>
-
   <main class="chat-container">
     
     <!-- Header -->
     <header class="header">
       <div class="logo-group">
+        <!-- Top Left Profile (Next to chat header area as requested) -->
+        <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
+          <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
+          <span id="my-mini-username">Username</span>
+        </div>
         <div class="status-indicator">
           <span class="pulse"></span>
         </div>
@@ -47,7 +46,7 @@
     <!-- Input Area with Emoji Button -->
     <div class="input-section">
       <form id="message-form" class="message-form">
-        <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard" disabled>😀</button>
+        <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard (Win + . or Cmd + Ctrl + Space)" disabled>😀</button>
         <div class="input-wrapper">
           <input type="text" id="message-input" placeholder="Sign in to start typing..." disabled required autocomplete="off" />
         </div>
