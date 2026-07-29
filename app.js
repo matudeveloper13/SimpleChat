@@ -83,7 +83,6 @@ let currentUsername = "";
 let currentAvatar = "avatar1.png";
 let currentBio = "";
 
-// Global user avatar cache so previous messages dynamically display updated avatars instantly
 const userAvatarCache = {};
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -94,7 +93,6 @@ const getRandomAvatar = () => {
   return avatars[Math.floor(Math.random() * avatars.length)];
 };
 
-// Smart Timestamp formatting (handles 24 hours check, months, and years)
 const formatTime = (timestamp) => {
   if (!timestamp) return "Just now";
   const date = timestamp.toDate();
@@ -123,7 +121,6 @@ const formatTime = (timestamp) => {
   }
 };
 
-// UI Toggles
 const switchTab = (activeTab, inactiveTab, activeForm, inactiveForm) => {
   activeTab.classList.add("active");
   inactiveTab.classList.remove("active");
@@ -137,7 +134,6 @@ tabLogin.addEventListener("click", () => switchTab(tabLogin, tabRegister, loginF
 authModalBtn.addEventListener("click", () => authOverlay.classList.remove("hidden"));
 closeModalBtn.addEventListener("click", () => authOverlay.classList.add("hidden"));
 
-// Profile Modal Toggles
 topLeftProfile.addEventListener("click", () => {
   if (!currentUsername) return;
   editModalAvatar.src = currentAvatar;
@@ -149,14 +145,12 @@ topLeftProfile.addEventListener("click", () => {
 
 closeProfileModal.addEventListener("click", () => profileOverlay.classList.add("hidden"));
 
-// Open Avatar Selector
 openAvatarSelector.addEventListener("click", () => {
   avatarSelectorOverlay.classList.remove("hidden");
 });
 
 closeAvatarSelector.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
-// Preset selection
 presetAvatars.forEach(img => {
   img.addEventListener("click", async () => {
     const selected = img.getAttribute("data-avatar");
@@ -177,14 +171,12 @@ presetAvatars.forEach(img => {
   });
 });
 
-// Bio Counter
 bioInput.addEventListener("input", updateCharCount);
 function updateCharCount() {
   const remaining = 150 - bioInput.value.length;
   bioCharCount.textContent = `${remaining} characters left`;
 }
 
-// Save Bio
 saveBioBtn.addEventListener("click", async () => {
   if (!currentUsername) return;
   currentBio = bioInput.value.trim();
@@ -199,7 +191,6 @@ saveBioBtn.addEventListener("click", async () => {
   }
 });
 
-// View other profile modal
 closeViewProfile.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
 async function openUserProfileModal(username) {
@@ -221,7 +212,6 @@ async function openUserProfileModal(username) {
   }
 }
 
-// Authentication
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("register-username").value.trim();
@@ -295,6 +285,7 @@ onAuthStateChanged(auth, async (user) => {
     messageInput.placeholder = "Message...";
     sendBtn.disabled = false;
     emojiBtn.disabled = false;
+    triggerRerender();
   } else {
     currentUsername = "";
     currentAvatar = "avatar1.png";
@@ -307,6 +298,7 @@ onAuthStateChanged(auth, async (user) => {
     messageInput.placeholder = "Sign in to start typing...";
     sendBtn.disabled = true;
     emojiBtn.disabled = true;
+    triggerRerender();
   }
 });
 
@@ -351,23 +343,28 @@ messageForm.addEventListener("submit", async (e) => {
 });
 
 let lastSnapshot = null;
-function renderMessages(snapshot) {
+async function renderMessages(snapshot) {
   lastSnapshot = snapshot;
   if (snapshot.empty) {
     messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Be the first to say hello!</div>`;
     return;
   }
   
-  messagesContainer.innerHTML = "";
-  
+  // Extract docs and sort chronologically oldest-first so they render top-to-bottom properly
   const docsArray = [];
   snapshot.forEach(docSnap => docsArray.push(docSnap));
-  docsArray.reverse();
+  docsArray.sort((a, b) => {
+    const tA = a.data().timestamp?.toMillis() || 0;
+    const tB = b.data().timestamp?.toMillis() || 0;
+    return tA - tB;
+  });
 
-  docsArray.forEach(async (docSnap) => {
+  const fragment = document.createDocumentFragment();
+
+  for (const docSnap of docsArray) {
     const msg = docSnap.data();
     const timeString = formatTime(msg.timestamp);
-    const isMe = msg.username === currentUsername;
+    const isMe = currentUsername && msg.username === currentUsername;
     const alignClass = isMe ? "sent" : "received";
     
     let userAvatar = userAvatarCache[msg.username];
@@ -404,9 +401,11 @@ function renderMessages(snapshot) {
       });
     });
 
-    messagesContainer.appendChild(msgEl);
-  });
-  
+    fragment.appendChild(msgEl);
+  }
+
+  messagesContainer.innerHTML = "";
+  messagesContainer.appendChild(fragment);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -416,7 +415,7 @@ function triggerRerender() {
   }
 }
 
-const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
+const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
 onSnapshot(q, (snapshot) => {
   renderMessages(snapshot);
 });
