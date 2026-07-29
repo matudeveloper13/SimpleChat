@@ -477,7 +477,7 @@ body {
   padding: 4px;
 }
 
-/* Discord Emoji Picker Popover (Half the size, styled like Discord) */
+/* Discord Emoji Picker Popover */
 .discord-emoji-picker {
   position: absolute;
   bottom: 50px;
@@ -531,20 +531,23 @@ body {
   background-color: #393c43;
 }
 
+/* Fixed: Avatar profile pictures as small, round, normal-sized emoji lookalikes */
 .discord-avatar-emoji-item {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   object-fit: cover;
   cursor: pointer;
-  padding: 1px;
-  border: 1px solid transparent;
-  transition: background 0.1s;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  vertical-align: middle;
+  transition: transform 0.1s, border-color 0.1s;
 }
 
 .discord-avatar-emoji-item:hover {
-  background-color: #393c43;
+  transform: scale(1.15);
   border-color: var(--primary);
+  background-color: #393c43;
 }
 
 .input-wrapper {
