@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
@@ -31,6 +31,7 @@ const messageForm = document.getElementById("message-form");
 const messageInput = document.getElementById("message-input");
 const messagesContainer = document.getElementById("messages-container");
 const chatRoomTitle = document.getElementById("chat-room-title");
+const exitDmBtn = document.getElementById("exit-dm-btn");
 
 const navFriendsBtn = document.getElementById("nav-friends-btn");
 const backToChatBtn = document.getElementById("back-to-chat-btn");
@@ -68,12 +69,16 @@ const emojiBtn = document.getElementById("emoji-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
+const typingIndicatorBox = document.getElementById("typing-indicator-box");
+const typingTextLabel = document.getElementById("typing-text-label");
+
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
 let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
+let typingTimeout = null;
 
 themeToggleBtn?.addEventListener("click", () => {
     if (document.body.classList.contains("dark-mode")) {
@@ -94,8 +99,13 @@ navFriendsBtn?.addEventListener("click", () => {
 backToChatBtn?.addEventListener("click", () => {
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
+});
+
+exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
+    exitDmBtn.classList.add("hidden");
+    loadMessagesFeed();
 });
 
 tabRegister?.addEventListener("click", () => {
@@ -216,7 +226,6 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Setup 4 MP4s (`myvideo.mp4`, `gif1.mp4`, `gif2.mp4`, `gif3.mp4`), 5 Avatars, and Basic Emojis
 const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif3.mp4"];
 const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
 const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
@@ -272,6 +281,32 @@ document.addEventListener("click", (e) => {
     }
 });
 
+// Typing indicator handler
+messageInput?.addEventListener("input", async () => {
+    if (currentUsername === "Guest") return;
+    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+    
+    // Update user typing status in Firestore
+    try {
+        await setDoc(doc(db, "typing", `${roomKey}_${currentUsername}`), {
+            username: currentUsername,
+            room: roomKey,
+            lastTyped: serverTimestamp()
+        });
+
+        if (typingTimeout) clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(async () => {
+            try {
+                await setDoc(doc(db, "typing", `${roomKey}_${currentUsername}`), {
+                    username: "",
+                    room: roomKey,
+                    lastTyped: serverTimestamp()
+                });
+            } catch(e){}
+        }, 2000);
+    } catch(e){}
+});
+
 messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = messageInput.value.trim();
@@ -299,45 +334,70 @@ messageForm?.addEventListener("submit", async (e) => {
     });
 });
 
-const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-onSnapshot(q, (snapshot) => {
-    messagesContainer.innerHTML = "";
-    snapshot.forEach(docSnap => {
-        const msg = docSnap.data();
-        
-        let matchesRoom = false;
-        if (currentChatRoom === "global") {
-            matchesRoom = !msg.room || msg.room === "global";
-        } else {
-            const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
-            matchesRoom = msg.room === expectedDM;
-        }
+function loadMessagesFeed() {
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+    onSnapshot(q, (snapshot) => {
+        messagesContainer.innerHTML = "";
+        snapshot.forEach(docSnap => {
+            const msg = docSnap.data();
+            
+            let matchesRoom = false;
+            if (currentChatRoom === "global") {
+                matchesRoom = !msg.room || msg.room === "global";
+            } else {
+                const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
+                matchesRoom = msg.room === expectedDM;
+            }
 
-        if (!matchesRoom) return;
+            if (!matchesRoom) return;
 
-        const isSent = msg.username === currentUsername;
-        const div = document.createElement("div");
-        div.className = `msg ${isSent ? 'sent' : 'received'}`;
-        
-        div.innerHTML = `
-            <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
-            <div class="msg-content">
-                <div class="msg-header">
-                    <span class="msg-author">${msg.username}</span>
-                    <span class="msg-time">Now</span>
+            const isSent = msg.username === currentUsername;
+            const div = document.createElement("div");
+            div.className = `msg ${isSent ? 'sent' : 'received'}`;
+            
+            div.innerHTML = `
+                <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
+                <div class="msg-content">
+                    <div class="msg-header">
+                        <span class="msg-author">${msg.username}</span>
+                        <span class="msg-time">Now</span>
+                    </div>
+                    <div class="msg-bubble">${msg.text}</div>
                 </div>
-                <div class="msg-bubble">${msg.text}</div>
-            </div>
-        `;
+            `;
 
-        div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
-            el.addEventListener("click", () => openUserProfileModal(msg.username));
+            div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
+                el.addEventListener("click", () => openUserProfileModal(msg.username));
+            });
+
+            messagesContainer.appendChild(div);
+        });
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+
+    // Listen to typing indicators for current room
+    const typingQuery = query(collection(db, "typing"));
+    onSnapshot(typingQuery, (snap) => {
+        let activeTypingUser = null;
+        const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.room === currentRoomKey && data.username && data.username !== currentUsername) {
+                activeTypingUser = data.username;
+            }
         });
 
-        messagesContainer.appendChild(div);
+        if (activeTypingUser) {
+            typingTextLabel.textContent = `@${activeTypingUser} is typing`;
+            typingIndicatorBox.classList.remove("hidden");
+        } else {
+            typingIndicatorBox.classList.add("hidden");
+        }
     });
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-});
+}
+
+loadMessagesFeed();
 
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
@@ -457,10 +517,10 @@ async function loadFriendsAndRequests() {
 function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
+    exitDmBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
-    // Clear feed instantly to show a brand new blank/isolated conversation room
     messagesContainer.innerHTML = `
         <div class="msg received">
             <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>SimpleChat</title>
-    <link rel="stylesheet" href="style.css?v=fixdm3" />
+    <link rel="stylesheet" href="style.css?v=fixdm4" />
 </head>
 <body class="dark-mode">
 
@@ -44,6 +44,7 @@
         <div class="sub-nav-bar">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span id="chat-room-title" style="font-weight: 700; color: var(--text-main);">global chat</span>
+                <button id="exit-dm-btn" class="btn btn-secondary hidden" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">❌ Exit DM</button>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button id="nav-friends-btn" class="friends-nav-pill" title="Open Friends & Requests">👥 Friends & DMs</button>
@@ -63,6 +64,14 @@
                         ✨ Welcome! Click friend usernames to chat in Direct Messages.
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator Area -->
+        <div id="typing-indicator-box" class="typing-indicator-container hidden">
+            <span id="typing-text-label">Someone is typing</span>
+            <div class="typing-dots">
+                <span></span><span></span><span></span>
             </div>
         </div>
 
