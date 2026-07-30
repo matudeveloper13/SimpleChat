@@ -68,6 +68,10 @@ const profileFriendActionBtn = document.getElementById("profile-friend-action-bt
 const emojiBtn = document.getElementById("emoji-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
+const tabEmojis = document.getElementById("tab-emojis");
+const tabGifs = document.getElementById("tab-gifs");
+const gifSearchContainer = document.getElementById("gif-search-container");
+const gifSearchInput = document.getElementById("gif-search-input");
 
 const dmPhotoUploadBtn = document.getElementById("dm-photo-upload-btn");
 const dmPhotoFileInput = document.getElementById("dm-photo-file-input");
@@ -78,11 +82,14 @@ const typingTextLabel = document.getElementById("typing-text-label");
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
-let currentUsername = "yanabanaya";
+let currentUsername = "Guest";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
 const TENOR_API_KEY = "LIVDSRZULELA";
+
+// Global cache to store messages per room for INSTANT 0-delay switching
+let globalMessagesCache = [];
 
 function formatMessageTime(timestamp) {
     let date;
@@ -101,11 +108,7 @@ function formatMessageTime(timestamp) {
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     
-    if (isToday) {
-        return `Today at ${timeStr}`;
-    } else {
-        return `${monthStr}, ${timeStr}`;
-    }
+    return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
 }
 
 themeToggleBtn?.addEventListener("click", () => {
@@ -134,19 +137,19 @@ exitDmBtn?.addEventListener("click", () => {
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
     if (dmPhotoUploadBtn) dmPhotoUploadBtn.classList.add("hidden");
-    loadMessagesFeed();
+    renderCurrentRoomMessages();
 });
 
 tabRegister?.addEventListener("click", () => {
-    tabRegister.className = "tab-btn btn btn-primary";
-    tabLogin.className = "tab-btn btn";
+    tabRegister.className = "btn btn-primary";
+    tabLogin.className = "btn";
     registerForm.classList.remove("hidden");
     loginForm.classList.add("hidden");
 });
 
 tabLogin?.addEventListener("click", () => {
-    tabLogin.className = "tab-btn btn btn-primary";
-    tabRegister.className = "tab-btn btn";
+    tabLogin.className = "btn btn-primary";
+    tabRegister.className = "btn";
     loginForm.classList.remove("hidden");
     registerForm.classList.add("hidden");
 });
@@ -255,31 +258,8 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// --- EMOJI & TENOR GIF DUAL PANEL SETUP ---
-if (discordEmojiPicker && !document.getElementById("picker-header-tabs")) {
-    const pickerHeader = document.createElement("div");
-    pickerHeader.id = "picker-header-tabs";
-    pickerHeader.style.cssText = "display: flex; border-bottom: 1px solid var(--border-color); padding: 5px; gap: 4px; background: var(--card-bg);";
-    pickerHeader.innerHTML = `
-        <button id="tab-emojis" type="button" class="btn btn-sm active" style="flex:1; font-size:11px; cursor:pointer;">😊 Emojis & Avatars</button>
-        <button id="tab-gifs" type="button" class="btn btn-sm" style="flex:1; font-size:11px; cursor:pointer;">🎬 GIFs</button>
-    `;
-    discordEmojiPicker.insertBefore(pickerHeader, discordEmojiPicker.firstChild);
-
-    const gifSearchDiv = document.createElement("div");
-    gifSearchDiv.id = "gif-search-container";
-    gifSearchDiv.className = "hidden";
-    gifSearchDiv.style.cssText = "padding: 6px; background: var(--card-bg);";
-    gifSearchDiv.innerHTML = `<input type="text" id="gif-search-input" placeholder="Search Tenor GIFs..." style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 12px; outline: none;" />`;
-    discordEmojiPicker.insertBefore(gifSearchDiv, discordEmojiGrid);
-}
-
-const tabEmojis = document.getElementById("tab-emojis");
-const tabGifs = document.getElementById("tab-gifs");
-const gifSearchContainer = document.getElementById("gif-search-container");
-const gifSearchInput = document.getElementById("gif-search-input");
-
-function renderEmojiAndAvatarTab() {
+// --- EMOJI & TENOR GIF PICKER ---
+function renderEmojiTab() {
     if (gifSearchContainer) gifSearchContainer.classList.add("hidden");
     discordEmojiGrid.innerHTML = "";
 
@@ -289,7 +269,6 @@ function renderEmojiAndAvatarTab() {
     avatarFiles.forEach(av => {
         const imgThumb = document.createElement("img");
         imgThumb.src = av;
-        imgThumb.className = "discord-picker-avatar-thumb";
         imgThumb.style.cssText = "width: 36px; height: 36px; border-radius: 50%; object-fit: cover; cursor: pointer;";
         imgThumb.addEventListener("click", () => {
             messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;" /> `;
@@ -301,7 +280,6 @@ function renderEmojiAndAvatarTab() {
 
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
-        emojiDiv.className = "discord-picker-emoji-thumb";
         emojiDiv.style.cssText = "font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px;";
         emojiDiv.textContent = em;
         emojiDiv.addEventListener("click", () => {
@@ -331,7 +309,6 @@ async function fetchTenorGifs(searchTerm = "trending") {
 
         data.results.forEach(result => {
             const gifUrl = result.media[0].tinygif.url;
-            
             const imgThumb = document.createElement("img");
             imgThumb.src = gifUrl;
             imgThumb.style.cssText = "width: 100%; height: 65px; object-fit: cover; border-radius: 4px; cursor: pointer;";
@@ -362,28 +339,25 @@ async function fetchTenorGifs(searchTerm = "trending") {
 }
 
 tabEmojis?.addEventListener("click", () => {
-    tabEmojis.classList.add("active");
-    tabGifs.classList.remove("active");
-    renderEmojiAndAvatarTab();
+    tabEmojis.classList.add("btn-primary");
+    tabGifs.classList.remove("btn-primary");
+    renderEmojiTab();
 });
 
 tabGifs?.addEventListener("click", () => {
-    tabGifs.classList.add("active");
-    tabEmojis.classList.remove("active");
+    tabGifs.classList.add("btn-primary");
+    tabEmojis.classList.remove("btn-primary");
     if (gifSearchContainer) gifSearchContainer.classList.remove("hidden");
     fetchTenorGifs("trending");
 });
 
 gifSearchInput?.addEventListener("input", (e) => {
-    const queryText = e.target.value.trim();
-    if (queryText.length > 1) {
-        fetchTenorGifs(queryText);
-    } else if (queryText.length === 0) {
-        fetchTenorGifs("trending");
-    }
+    const q = e.target.value.trim();
+    if (q.length > 1) fetchTenorGifs(q);
+    else if (q.length === 0) fetchTenorGifs("trending");
 });
 
-renderEmojiAndAvatarTab();
+renderEmojiTab();
 
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -396,7 +370,11 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// --- DM GALLERY PHOTO UPLOAD LISTENER ---
+// --- GALLERY PHOTO UPLOAD (DMS ONLY) ---
+dmPhotoUploadBtn?.addEventListener("click", () => {
+    if (currentChatRoom !== "global") dmPhotoFileInput.click();
+});
+
 dmPhotoFileInput?.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file || currentUsername === "Guest" || currentChatRoom === "global") return;
@@ -438,9 +416,7 @@ messageInput?.addEventListener("input", async () => {
 
         if (typingTimeout) clearTimeout(typingTimeout);
         typingTimeout = setTimeout(async () => {
-            try {
-                await deleteDoc(typingDocRef);
-            } catch(e){}
+            try { await deleteDoc(typingDocRef); } catch(e){}
         }, 3000);
     } catch(e){}
 });
@@ -463,61 +439,66 @@ messageForm?.addEventListener("submit", async (e) => {
         await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
     } catch(e){}
     
-    let targetRoom = "global";
-    if (currentChatRoom !== "global") {
-        targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
-    }
-
     await addDoc(collection(db, "messages"), {
         text,
         username: currentUsername,
         avatar: userAvatar,
-        room: targetRoom,
+        room: roomKey,
         timestamp: serverTimestamp()
     });
 });
 
-function loadMessagesFeed() {
+// --- ZERO-DELAY INSTANT ROOM RENDERER ---
+function renderCurrentRoomMessages() {
+    messagesContainer.innerHTML = "";
+    
+    globalMessagesCache.forEach(msg => {
+        let matchesRoom = false;
+        if (currentChatRoom === "global") {
+            matchesRoom = !msg.room || msg.room === "global";
+        } else {
+            const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
+            matchesRoom = msg.room === expectedDM;
+        }
+
+        if (!matchesRoom) return;
+
+        const isSent = msg.username === currentUsername;
+        const div = document.createElement("div");
+        div.className = `msg ${isSent ? 'sent' : 'received'}`;
+        
+        const readableTime = formatMessageTime(msg.timestamp);
+
+        div.innerHTML = `
+            <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
+            <div class="msg-content">
+                <div class="msg-header">
+                    <span class="msg-author">${msg.username}</span>
+                    <span class="msg-time">${readableTime}</span>
+                </div>
+                <div class="msg-bubble">${msg.text}</div>
+            </div>
+        `;
+
+        div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
+            el.addEventListener("click", () => openUserProfileModal(msg.username));
+        });
+
+        messagesContainer.appendChild(div);
+    });
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Global listener populates cache immediately, enabling instant room switching with zero delay
+function initGlobalMessagesListener() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
-        messagesContainer.innerHTML = "";
+        globalMessagesCache = [];
         snapshot.forEach(docSnap => {
-            const msg = docSnap.data();
-            
-            let matchesRoom = false;
-            if (currentChatRoom === "global") {
-                matchesRoom = !msg.room || msg.room === "global";
-            } else {
-                const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
-                matchesRoom = msg.room === expectedDM;
-            }
-
-            if (!matchesRoom) return;
-
-            const isSent = msg.username === currentUsername;
-            const div = document.createElement("div");
-            div.className = `msg ${isSent ? 'sent' : 'received'}`;
-            
-            const readableTime = formatMessageTime(msg.timestamp);
-
-            div.innerHTML = `
-                <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
-                <div class="msg-content">
-                    <div class="msg-header">
-                        <span class="msg-author">${msg.username}</span>
-                        <span class="msg-time">${readableTime}</span>
-                    </div>
-                    <div class="msg-bubble">${msg.text}</div>
-                </div>
-            `;
-
-            div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
-                el.addEventListener("click", () => openUserProfileModal(msg.username));
-            });
-
-            messagesContainer.appendChild(div);
+            globalMessagesCache.push(docSnap.data());
         });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        renderCurrentRoomMessages();
     });
 
     const typingQuery = query(collection(db, "typing"));
@@ -540,11 +521,7 @@ function loadMessagesFeed() {
         });
 
         if (activeTypingUsers.length > 0) {
-            if (activeTypingUsers.length === 1) {
-                typingTextLabel.textContent = `@${activeTypingUsers[0]} is typing`;
-            } else {
-                typingTextLabel.textContent = `Multiple users are typing`;
-            }
+            typingTextLabel.textContent = activeTypingUsers.length === 1 ? `@${activeTypingUsers[0]} is typing` : `Multiple users are typing`;
             typingIndicatorBox.classList.remove("hidden");
         } else {
             typingIndicatorBox.classList.add("hidden");
@@ -552,7 +529,7 @@ function loadMessagesFeed() {
     });
 }
 
-loadMessagesFeed();
+initGlobalMessagesListener();
 
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
@@ -677,20 +654,8 @@ function openDirectMessage(friendName) {
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
-    messagesContainer.innerHTML = `
-        <div class="msg received">
-            <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
-            <div class="msg-content">
-                <div class="msg-header">
-                    <span class="msg-author">System</span>
-                    <span class="msg-time">Just now</span>
-                </div>
-                <div class="msg-bubble">
-                    🔒 Direct Message conversation started with @${friendName}.
-                </div>
-            </div>
-        </div>
-    `;
+    // Instantly renders cached messages with zero delay
+    renderCurrentRoomMessages();
 }
 
 async function acceptFriendRequest(friendName) {

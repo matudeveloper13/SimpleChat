@@ -45,11 +45,13 @@ body {
     display: none !important;
 }
 
-/* App Layout */
 .app-container {
     display: flex;
     width: 100vw;
     height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow: hidden;
 }
 
 .sidebar {
@@ -73,10 +75,10 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    min-width: 0;
     overflow: hidden;
 }
 
-/* Chat Header */
 .chat-header {
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -86,7 +88,6 @@ body {
     background-color: var(--bg-color);
 }
 
-/* Messages Feed Container */
 .messages-container {
     flex: 1;
     padding: 20px;
@@ -95,13 +96,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 100%;
+    word-break: break-word;
 }
 
-/* Message Item Layout */
 .msg {
     display: flex;
     gap: 12px;
     max-width: 75%;
+    width: 100%;
     word-break: break-word;
     overflow-wrap: break-word;
 }
@@ -124,6 +127,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
+    max-width: calc(100% - 52px);
 }
 
 .msg.sent .msg-content {
@@ -153,9 +158,11 @@ body {
     border-radius: var(--radius-md);
     font-size: 14px;
     line-height: 1.4;
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
-/* STRICT IMAGE & MEDIA CONSTRAINTS */
 .msg-bubble img,
 .msg-bubble video {
     max-width: 220px !important;
@@ -172,7 +179,6 @@ body {
     color: #ffffff;
 }
 
-/* Chat Input Bar */
 .chat-input-area {
     padding: 16px 20px;
     border-top: 1px solid var(--border-color);
@@ -198,9 +204,9 @@ body {
     font-size: 14px;
     outline: none;
     padding: 6px 0;
+    min-width: 0;
 }
 
-/* Buttons & Elements */
 .btn {
     background-color: var(--card-bg);
     color: var(--text-color);
@@ -239,7 +245,6 @@ body {
     color: var(--text-color);
 }
 
-/* Overlays / Modals */
 .overlay {
     position: fixed;
     top: 0;
@@ -265,7 +270,6 @@ body {
     gap: 16px;
 }
 
-/* Emoji / GIF Picker Popup */
 .discord-emoji-picker {
     position: absolute;
     bottom: 75px;
@@ -290,7 +294,6 @@ body {
     overflow-y: auto;
 }
 
-/* Profile Panel Layout */
 .user-profile-bar {
     display: flex;
     align-items: center;

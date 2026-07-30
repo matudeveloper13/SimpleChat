@@ -31,7 +31,7 @@
             <header class="chat-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <h3 id="chat-room-title" style="font-size: 16px;">global chat</h3>
-                    <button id="exit-dm-btn" class="btn btn-sm hidden" style="font-size: 11px; padding: 2px 6px;">Exit DM</button>
+                    <button id="exit-dm-btn" class="btn btn-sm hidden" style="font-size: 11px; padding: 2px 6px; background: var(--danger); color: white; border: none;">✕ Close DM</button>
                 </div>
             </header>
 
@@ -44,17 +44,24 @@
 
             <!-- Input & Picker Bar -->
             <footer class="chat-input-area">
-                <!-- Emoji/GIF Pop-up Window -->
+                <!-- Emoji / GIF Popup Panel -->
                 <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
+                    <div id="picker-header-tabs" style="display: flex; border-bottom: 1px solid var(--border-color); padding: 5px; gap: 4px; background: var(--card-bg);">
+                        <button id="tab-emojis" type="button" class="btn btn-sm active" style="flex:1; font-size:11px; cursor:pointer;">😊 Emojis</button>
+                        <button id="tab-gifs" type="button" class="btn btn-sm" style="flex:1; font-size:11px; cursor:pointer;">🎬 GIFs</button>
+                    </div>
+                    <div id="gif-search-container" class="hidden" style="padding: 6px; background: var(--card-bg);">
+                        <input type="text" id="gif-search-input" placeholder="Search Tenor GIFs..." style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 12px; outline: none;" />
+                    </div>
                     <div id="discord-emoji-grid" class="discord-emoji-grid"></div>
                 </div>
 
                 <form id="message-form">
-                    <button type="button" id="emoji-btn" class="icon-btn">😊</button>
+                    <button type="button" id="emoji-btn" class="icon-btn" title="Open Emojis & GIFs">😊</button>
                     
-                    <!-- Hidden File Input for Direct Message Photo uploads -->
+                    <!-- Gallery Photo Upload (Strictly DMs Only) -->
                     <input type="file" id="dm-photo-file-input" accept="image/*" class="hidden">
-                    <button type="button" id="dm-photo-upload-btn" class="icon-btn hidden" title="Upload Photo">📷</button>
+                    <button type="button" id="dm-photo-upload-btn" class="icon-btn hidden" title="Upload Photo from Gallery">📷</button>
                     
                     <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
                     <button type="submit" class="btn btn-primary" style="padding: 6px 12px;">Send</button>
@@ -92,14 +99,12 @@
             </div>
             <p id="auth-error" style="color: var(--danger); font-size: 12px;"></p>
             
-            <!-- Login Form -->
             <form id="login-form" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="login-username" placeholder="Username" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
                 <input type="password" id="login-password" placeholder="Password" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
                 <button type="submit" class="btn btn-primary">Login</button>
             </form>
 
-            <!-- Register Form -->
             <form id="register-form" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="register-username" placeholder="Choose Username" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
                 <input type="password" id="register-password" placeholder="Choose Password" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
@@ -108,7 +113,7 @@
         </div>
     </div>
 
-    <!-- My Profile Settings Modal -->
+    <!-- Profile & Avatar Overlays -->
     <div id="profile-overlay" class="overlay hidden">
         <div class="modal">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -131,7 +136,6 @@
         </div>
     </div>
 
-    <!-- Avatar Preset Selector Overlay -->
     <div id="avatar-selector-overlay" class="overlay hidden">
         <div class="modal" style="width: 300px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -148,7 +152,6 @@
         </div>
     </div>
 
-    <!-- View Other User Profile Modal -->
     <div id="view-profile-overlay" class="overlay hidden">
         <div class="modal">
             <div style="display: flex; justify-content: space-between; align-items: center;">
