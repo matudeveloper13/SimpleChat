@@ -80,9 +80,9 @@ let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
 
-// Formats Firestore timestamps or date objects cleanly into real human-readable time strings
+// Formats Firestore timestamps or date objects cleanly into month, day, year, and time strings
 function formatMessageTime(timestamp) {
-    if (!timestamp) return "Just now";
+    if (!timestamp) return "Sending...";
     let date;
     if (typeof timestamp.toDate === "function") {
         date = timestamp.toDate();
@@ -90,15 +90,18 @@ function formatMessageTime(timestamp) {
         date = new Date(timestamp);
     }
     
-    if (isNaN(date.getTime())) return "Just now";
+    if (isNaN(date.getTime())) return "Sending...";
     
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    
     if (isToday) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `Today at ${timeStr}`;
     } else {
-        return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        return `${monthStr}, ${timeStr}`;
     }
 }
 
@@ -303,7 +306,6 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Fixed Typing Indicator Handler using document-level / user-specific docs to sync properly
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -338,7 +340,6 @@ messageForm?.addEventListener("submit", async (e) => {
 
     messageInput.value = "";
     
-    // Clear typing status immediately upon sending message
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
     try {
         await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
@@ -401,7 +402,6 @@ function loadMessagesFeed() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
-    // Real-time listener for typing indicator updates across users
     const typingQuery = query(collection(db, "typing"));
     onSnapshot(typingQuery, (snap) => {
         let activeTypingUsers = [];
@@ -410,7 +410,6 @@ function loadMessagesFeed() {
         snap.forEach(d => {
             const data = d.data();
             if (data.room === currentRoomKey && data.username && data.username !== currentUsername) {
-                // Check if the typing status is fresh (within last 5 seconds)
                 if (data.lastTyped) {
                     const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
                     if (new Date() - typedDate < 5000) {
