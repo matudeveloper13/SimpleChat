@@ -27,70 +27,112 @@
   <!-- Music Mute/Unmute Button in Upper Right -->
   <button id="music-toggle-btn" class="absolute-music-btn" title="Play/Pause Music">🎵</button>
 
-  <main class="chat-container">
-    
-    <!-- Header -->
-    <header class="header">
-      <div class="logo-group">
-        <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
-          <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
-          <span id="my-mini-username">Username</span>
+  <main class="chat-app-wrapper">
+
+    <!-- Sidebar for Navigation & DM List -->
+    <aside class="sidebar hidden" id="app-sidebar">
+      <div class="sidebar-header">
+        <button id="nav-global-btn" class="sidebar-nav-btn active">🌐 Global Chat</button>
+        <button id="nav-friends-btn" class="sidebar-nav-btn">👥 Friends <span id="pending-badge" class="badge hidden">0</span></button>
+      </div>
+      <div class="sidebar-dm-section">
+        <h3>Direct Messages</h3>
+        <div id="friends-dm-list" class="dm-list">
+          <!-- Populated dynamically with friends -->
         </div>
-        <div class="brand-title-group">
-          <h1>SimpleChat</h1>
-        </div>
       </div>
-      <div id="user-status" class="user-status">
-        <span id="current-user-text">matubanana2</span>
-        <!-- Settings Gear Button next to the username -->
-        <button id="settings-gear-btn" class="settings-gear-btn" title="Settings">⚙️</button>
-        <button id="auth-modal-btn" class="btn btn-outline hidden">Sign In</button>
-        <button id="logout-btn" class="btn btn-outline">Log Out</button>
-      </div>
-    </header>
+    </aside>
 
-    <!-- Message Feed -->
-    <div id="messages-container" class="messages-box">
-      <div class="empty-state">Loading messages...</div>
-    </div>
-
-    <!-- Typing Indicator Area -->
-    <div id="typing-indicator" class="typing-wrapper hidden">
-      <div class="typing-bubble">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      </div>
-      <span id="typing-text">Someone is typing...</span>
-    </div>
-
-    <!-- Input Area with Discord-Style Emoji Picker Popover -->
-    <div class="input-section">
-      <form id="message-form" class="message-form">
-        <div style="position: relative;">
-          <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard">😀</button>
-          
-          <!-- Discord Emoji Popup Picker -->
-          <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
-            <div class="discord-emoji-search-box">
-              <input type="text" id="emoji-search-input" placeholder="Search emoji..." autocomplete="off" />
-            </div>
-            <div class="discord-emoji-scroll-area" id="discord-emoji-grid">
-              <!-- Populated dynamically via JS -->
-            </div>
+    <div class="chat-container">
+      
+      <!-- Header -->
+      <header class="header">
+        <div class="logo-group">
+          <div id="top-left-profile" class="top-left-profile hidden" title="Click to view/edit profile & bio">
+            <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" class="profile-circle" />
+            <span id="my-mini-username">Username</span>
+          </div>
+          <div class="brand-title-group">
+            <h1 id="active-chat-title">SimpleChat (Global)</h1>
           </div>
         </div>
-
-        <div class="input-wrapper">
-          <input type="text" id="message-input" placeholder="Message..." disabled required autocomplete="off" />
+        <div id="user-status" class="user-status">
+          <span id="current-user-text">Guest</span>
+          <button id="settings-gear-btn" class="settings-gear-btn" title="Settings">⚙️</button>
+          <button id="auth-modal-btn" class="btn btn-outline">Sign In</button>
+          <button id="logout-btn" class="btn btn-outline hidden">Log Out</button>
         </div>
-        <button type="submit" id="send-btn" class="btn btn-primary" disabled>
-          Send
-        </button>
-      </form>
-    </div>
+      </header>
 
+      <!-- Main Chat Feed (Global or DM) -->
+      <div id="chat-feed-view" class="view-panel">
+        <div id="messages-container" class="messages-box">
+          <div class="empty-state">Loading messages...</div>
+        </div>
+
+        <div id="typing-indicator" class="typing-wrapper hidden">
+          <div class="typing-bubble">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <span id="typing-text">Someone is typing...</span>
+        </div>
+
+        <div class="input-section">
+          <form id="message-form" class="message-form">
+            <div style="position: relative;">
+              <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard">😀</button>
+              
+              <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
+                <div class="discord-emoji-search-box">
+                  <input type="text" id="emoji-search-input" placeholder="Search emoji..." autocomplete="off" />
+                </div>
+                <div class="discord-emoji-scroll-area" id="discord-emoji-grid"></div>
+              </div>
+            </div>
+
+            <div class="input-wrapper">
+              <input type="text" id="message-input" placeholder="Message..." disabled required autocomplete="off" />
+            </div>
+            <button type="submit" id="send-btn" class="btn btn-primary" disabled>Send</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Friends Dashboard View -->
+      <div id="friends-view" class="view-panel hidden">
+        <div class="friends-dashboard">
+          <div class="friends-tab-header">
+            <button id="subtab-all-friends" class="subtab-btn active">All Friends</button>
+            <button id="subtab-requests" class="subtab-btn">Pending Requests</button>
+            <button id="subtab-add-friend" class="subtab-btn highlight">Add Friend</button>
+          </div>
+
+          <!-- All Friends List -->
+          <div id="friends-list-panel" class="friends-panel">
+            <div id="all-friends-grid" class="friends-grid"></div>
+          </div>
+
+          <!-- Pending Requests List -->
+          <div id="friends-requests-panel" class="friends-panel hidden">
+            <div id="incoming-requests-list" class="requests-list"></div>
+          </div>
+
+          <!-- Add Friend Search -->
+          <div id="friends-add-panel" class="friends-panel hidden">
+            <h3>Add a Friend by Username</h3>
+            <div class="add-friend-input-group">
+              <input type="text" id="search-friend-username" placeholder="Enter exact username..." />
+              <button id="send-friend-req-btn" class="btn btn-primary">Send Request</button>
+            </div>
+            <p id="add-friend-status-msg" class="status-msg"></p>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </main>
 
-  <!-- Auth Modal -->
+  <!-- Modals & Overlays -->
   <div id="auth-overlay" class="overlay hidden">
     <div class="modal">
       <div class="tab-header">
@@ -98,7 +140,6 @@
         <button id="tab-login" class="tab-btn">Login</button>
       </div>
 
-      <!-- Register -->
       <form id="register-form" class="auth-form">
         <div class="input-group">
           <label for="register-username">Username</label>
@@ -111,7 +152,6 @@
         <button type="submit" class="btn btn-primary full-width">Create Account</button>
       </form>
 
-      <!-- Login -->
       <form id="login-form" class="auth-form hidden">
         <div class="input-group">
           <label for="login-username">Username</label>
@@ -129,7 +169,6 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
   <div id="settings-overlay" class="overlay hidden">
     <div class="modal settings-modal">
       <h2>Settings</h2>
@@ -146,7 +185,6 @@
     </div>
   </div>
 
-  <!-- Profile & Bio Modal -->
   <div id="profile-overlay" class="overlay hidden">
     <div class="modal profile-modal">
       <h2>My Profile</h2>
@@ -168,7 +206,6 @@
     </div>
   </div>
 
-  <!-- Avatar Selector Modal -->
   <div id="avatar-selector-overlay" class="overlay hidden">
     <div class="modal avatar-selector-modal">
       <h2>Choose an Avatar</h2>
@@ -183,7 +220,7 @@
     </div>
   </div>
 
-  <!-- View Other User Profile Modal -->
+  <!-- View Other User Profile Modal (With Friend Request Action Button) -->
   <div id="view-profile-overlay" class="overlay hidden">
     <div class="modal profile-modal">
       <div class="profile-edit-container">
@@ -194,11 +231,13 @@
         <label style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Bio:</label>
         <div id="view-user-bio" class="bio-text-box">No bio available.</div>
       </div>
-      <button id="close-view-profile" class="btn btn-primary full-width">Close</button>
+      <div style="display: flex; gap: 10px; flex-direction: column;">
+        <button id="profile-friend-action-btn" class="btn btn-primary full-width">Add Friend</button>
+        <button id="close-view-profile" class="btn-text">Close</button>
+      </div>
     </div>
   </div>
 
-  <!-- Ban Screen Overlay -->
   <div id="ban-overlay" class="overlay hidden">
     <div class="modal">
       <h2 style="color: var(--danger); margin-bottom: 10px;">Account Banned</h2>
@@ -209,7 +248,6 @@
     </div>
   </div>
 
-  <!-- Inline Script for Background Stars, Music, and Emoji Picker Logic -->
   <script>
     const starsContainer = document.getElementById("stars-container");
     for (let i = 0; i < 50; i++) {
@@ -266,7 +304,6 @@
     const emojiGrid = document.getElementById("discord-emoji-grid");
     const messageInput = document.getElementById("message-input");
 
-    // Add your video filenames here (make sure they are in your project folder)
     const videoEmojis = ["myvideo.mp4"]; 
 
     const popularEmojis = [
@@ -280,7 +317,6 @@
     function renderEmojis() {
       emojiGrid.innerHTML = "";
 
-      // 1. Render Video Emojis (same size class as other picker items)
       videoEmojis.forEach(videoFile => {
         const videoEl = document.createElement("video");
         videoEl.src = videoFile;
@@ -298,7 +334,6 @@
         emojiGrid.appendChild(videoEl);
       });
 
-      // 2. Render Avatar Emojis
       avatarEmojis.forEach(avatar => {
         const img = document.createElement("img");
         img.src = avatar;
@@ -311,7 +346,6 @@
         emojiGrid.appendChild(img);
       });
 
-      // 3. Render Standard Emojis
       popularEmojis.forEach(emoji => {
         const span = document.createElement("span");
         span.className = "discord-emoji-item";

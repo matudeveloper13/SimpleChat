@@ -17,7 +17,9 @@ import {
   doc,
   setDoc,
   getDoc,
-  deleteDoc
+  deleteDoc,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -45,6 +47,7 @@ function containsProfanity(username) {
   return forbiddenWords.some(word => cleanedUsername.includes(word));
 }
 
+// UI Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const currentUserText = document.getElementById("current-user-text");
@@ -87,9 +90,34 @@ const closeViewProfile = document.getElementById("close-view-profile");
 const viewUserAvatar = document.getElementById("view-user-avatar");
 const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
+const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
 
 const banOverlay = document.getElementById("ban-overlay");
 const dismissBanBtn = document.getElementById("dismiss-ban-btn");
+
+// Navigation & Views
+const appSidebar = document.getElementById("app-sidebar");
+const navGlobalBtn = document.getElementById("nav-global-btn");
+const navFriendsBtn = document.getElementById("nav-friends-btn");
+const pendingBadge = document.getElementById("pending-badge");
+const chatFeedView = document.getElementById("chat-feed-view");
+const friendsView = document.getElementById("friends-view");
+const activeChatTitle = document.getElementById("active-chat-title");
+const friendsDmList = document.getElementById("friends-dm-list");
+
+// Friends Tab Subtabs
+const subtabAllFriends = document.getElementById("subtab-all-friends");
+const subtabRequests = document.getElementById("subtab-requests");
+const subtabAddFriend = document.getElementById("subtab-add-friend");
+const friendsListPanel = document.getElementById("friends-list-panel");
+const friendsRequestsPanel = document.getElementById("friends-requests-panel");
+const friendsAddPanel = document.getElementById("friends-add-panel");
+
+const allFriendsGrid = document.getElementById("all-friends-grid");
+const incomingRequestsList = document.getElementById("incoming-requests-list");
+const searchFriendUsername = document.getElementById("search-friend-username");
+const sendFriendReqBtn = document.getElementById("send-friend-req-btn");
+const addFriendStatusMsg = document.getElementById("add-friend-status-msg");
 
 dismissBanBtn.addEventListener("click", async () => {
   banOverlay.classList.add("hidden");
@@ -101,6 +129,10 @@ let currentUsername = "";
 let currentAvatar = "avatar1.png";
 let currentBio = "";
 const userAvatarCache = {};
+
+let activeChatMode = "global"; // "global" or "dm"
+let activeDmTarget = null;
+let unsubMessages = null;
 
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
@@ -114,7 +146,6 @@ const formatTime = (timestamp) => {
   if (!timestamp) return "Just now";
   const date = timestamp.toDate();
   const now = new Date();
-  
   const isToday = date.toDateString() === now.toDateString();
   const isThisYear = date.getFullYear() === now.getFullYear();
 
@@ -188,7 +219,9 @@ saveBioBtn.addEventListener("click", async () => {
 
 closeViewProfile.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
+let viewingProfileUser = "";
 async function openUserProfileModal(username) {
+  viewingProfileUser = username;
   try {
     const userSnap = await getDoc(doc(db, "users", username));
     if (userSnap.exists()) {
@@ -201,11 +234,135 @@ async function openUserProfileModal(username) {
       viewUserName.textContent = username;
       viewUserBio.textContent = "No bio available.";
     }
+
+    if (username === currentUsername) {
+      profileFriendActionBtn.style.display = "none";
+    } else {
+      profileFriendActionBtn.style.display = "block";
+      const areWeFriends = await checkAreFriends(currentUsername, username);
+      const hasPending = await checkHasPendingRequest(currentUsername, username);
+
+      if (areWeFriends) {
+        profileFriendActionBtn.textContent = "Already Friends";
+        profileFriendActionBtn.disabled = true;
+      } else if (hasPending) {
+        profileFriendActionBtn.textContent = "Request Sent";
+        profileFriendActionBtn.disabled = true;
+      } else {
+        profileFriendActionBtn.textContent = "Add Friend";
+        profileFriendActionBtn.disabled = false;
+      }
+    }
+
     viewProfileOverlay.classList.remove("hidden");
   } catch (err) {
     console.error("Error fetching user profile:", err);
   }
 }
+
+profileFriendActionBtn.addEventListener("click", async () => {
+  if (!viewingProfileUser || viewingProfileUser === currentUsername) return;
+  await sendFriendRequest(viewingProfileUser);
+  profileFriendActionBtn.textContent = "Request Sent";
+  profileFriendActionBtn.disabled = true;
+});
+
+async function checkAreFriends(userA, userB) {
+  const fRef1 = doc(db, "friends", `${userA}_${userB}`);
+  const fRef2 = doc(db, "friends", `${userB}_${userA}`);
+  const [s1, s2] = await Promise.all([getDoc(fRef1), getDoc(fRef2)]);
+  return s1.exists() || s2.exists();
+}
+
+async function checkHasPendingRequest(sender, receiver) {
+  const reqRef1 = doc(db, "friendRequests", `${sender}_to_${receiver}`);
+  const reqRef2 = doc(db, "friendRequests", `${receiver}_to_${sender}`);
+  const [s1, s2] = await Promise.all([getDoc(reqRef1), getDoc(reqRef2)]);
+  return s1.exists() || s2.exists();
+}
+
+async function sendFriendRequest(targetUsername) {
+  if (targetUsername === currentUsername) return;
+  try {
+    const targetSnap = await getDoc(doc(db, "users", targetUsername));
+    if (!targetSnap.exists()) {
+      addFriendStatusMsg.textContent = "User not found!";
+      addFriendStatusMsg.style.color = "var(--danger)";
+      return;
+    }
+
+    const areFriends = await checkAreFriends(currentUsername, targetUsername);
+    if (areFriends) {
+      addFriendStatusMsg.textContent = "You are already friends with this user!";
+      addFriendStatusMsg.style.color = "var(--danger)";
+      return;
+    }
+
+    const reqId = `${currentUsername}_to_${targetUsername}`;
+    await setDoc(doc(db, "friendRequests", reqId), {
+      sender: currentUsername,
+      receiver: targetUsername,
+      timestamp: serverTimestamp()
+    });
+
+    addFriendStatusMsg.textContent = `Friend request sent to ${targetUsername}!`;
+    addFriendStatusMsg.style.color = "var(--success)";
+    searchFriendUsername.value = "";
+  } catch (err) {
+    console.error("Error sending request:", err);
+  }
+}
+
+sendFriendReqBtn.addEventListener("click", () => {
+  const target = searchFriendUsername.value.trim();
+  if (!target) return;
+  sendFriendRequest(target);
+});
+
+subtabAllFriends.addEventListener("click", () => {
+  subtabAllFriends.classList.add("active");
+  subtabRequests.classList.remove("active");
+  subtabAddFriend.classList.remove("active");
+  friendsListPanel.classList.remove("hidden");
+  friendsRequestsPanel.classList.add("hidden");
+  friendsAddPanel.classList.add("hidden");
+});
+
+subtabRequests.addEventListener("click", () => {
+  subtabRequests.classList.add("active");
+  subtabAllFriends.classList.remove("active");
+  subtabAddFriend.classList.remove("active");
+  friendsRequestsPanel.classList.remove("hidden");
+  friendsListPanel.classList.add("hidden");
+  friendsAddPanel.classList.add("hidden");
+});
+
+subtabAddFriend.addEventListener("click", () => {
+  subtabAddFriend.classList.add("active");
+  subtabAllFriends.classList.remove("active");
+  subtabRequests.classList.remove("active");
+  friendsAddPanel.classList.remove("hidden");
+  friendsListPanel.classList.add("hidden");
+  friendsRequestsPanel.classList.add("hidden");
+});
+
+navGlobalBtn.addEventListener("click", () => {
+  navGlobalBtn.classList.add("active");
+  navFriendsBtn.classList.remove("active");
+  chatFeedView.classList.remove("hidden");
+  friendsView.classList.add("hidden");
+  activeChatMode = "global";
+  activeChatTitle.textContent = "SimpleChat (Global)";
+  loadGlobalMessages();
+});
+
+navFriendsBtn.addEventListener("click", () => {
+  navFriendsBtn.classList.add("active");
+  navGlobalBtn.classList.remove("active");
+  friendsView.classList.remove("hidden");
+  chatFeedView.classList.add("hidden");
+  document.querySelectorAll(".dm-item").forEach(el => el.classList.remove("active"));
+});
 
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -279,12 +436,15 @@ onAuthStateChanged(auth, async (user) => {
     authModalBtn.classList.add("hidden");
     logoutBtn.classList.remove("hidden");
     topLeftProfile.classList.remove("hidden");
+    appSidebar.classList.remove("hidden");
 
     messageInput.disabled = false;
     messageInput.placeholder = "Message...";
     sendBtn.disabled = false;
     emojiBtn.disabled = false;
-    triggerRerender();
+
+    loadGlobalMessages();
+    setupRealtimeListeners();
   } else {
     currentUsername = "";
     currentAvatar = "avatar1.png";
@@ -293,18 +453,156 @@ onAuthStateChanged(auth, async (user) => {
     authModalBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     topLeftProfile.classList.add("hidden");
+    appSidebar.classList.add("hidden");
+
     messageInput.disabled = true;
     messageInput.placeholder = "Sign in to start typing...";
     sendBtn.disabled = true;
     emojiBtn.disabled = true;
-    triggerRerender();
   }
 });
+
+function setupRealtimeListeners() {
+  const reqQuery = query(collection(db, "friendRequests"), where("receiver", "==", currentUsername));
+  onSnapshot(reqQuery, (snapshot) => {
+    incomingRequestsList.innerHTML = "";
+    let count = snapshot.size;
+    if (count > 0) {
+      pendingBadge.textContent = count;
+      pendingBadge.classList.remove("hidden");
+    } else {
+      pendingBadge.classList.add("hidden");
+    }
+
+    if (snapshot.empty) {
+      incomingRequestsList.innerHTML = `<div class="empty-state">No pending friend requests.</div>`;
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const req = docSnap.data();
+      const reqId = docSnap.id;
+
+      const card = document.createElement("div");
+      card.className = "request-card";
+      card.innerHTML = `
+        <span><strong>${req.sender}</strong> wants to be friends</span>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary accept-btn" style="padding: 4px 10px; font-size: 12px;">Accept</button>
+          <button class="btn btn-outline decline-btn" style="padding: 4px 10px; font-size: 12px;">Decline</button>
+        </div>
+      `;
+
+      card.querySelector(".accept-btn").addEventListener("click", async () => {
+        await setDoc(doc(db, "friends", `${currentUsername}_${req.sender}`), {
+          users: [currentUsername, req.sender],
+          timestamp: serverTimestamp()
+        });
+        await deleteDoc(doc(db, "friendRequests", reqId));
+      });
+
+      card.querySelector(".decline-btn").addEventListener("click", async () => {
+        await deleteDoc(doc(db, "friendRequests", reqId));
+      });
+
+      incomingRequestsList.appendChild(card);
+    });
+  });
+
+  const friendsQuery = query(collection(db, "friends"), where("users", "array-contains", currentUsername));
+  onSnapshot(friendsQuery, async (snapshot) => {
+    allFriendsGrid.innerHTML = "";
+    friendsDmList.innerHTML = "";
+
+    if (snapshot.empty) {
+      allFriendsGrid.innerHTML = `<div class="empty-state">You have no friends added yet.</div>`;
+      friendsDmList.innerHTML = `<div style="font-size: 12px; color: var(--text-muted); padding: 5px 10px;">No DMs yet</div>`;
+      return;
+    }
+
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const friendName = data.users.find(u => u !== currentUsername);
+
+      let friendAvatar = "avatar1.png";
+      try {
+        const uSnap = await getDoc(doc(db, "users", friendName));
+        if (uSnap.exists() && uSnap.data().avatar) {
+          friendAvatar = uSnap.data().avatar;
+        }
+      } catch (e) {}
+
+      const friendCard = document.createElement("div");
+      friendCard.className = "friend-card";
+      friendCard.innerHTML = `
+        <div class="friend-card-info">
+          <img src="${friendAvatar}" class="friend-card-avatar profile-circle" />
+          <span style="font-weight: 600; font-size: 14px;">${friendName}</span>
+        </div>
+        <button class="btn btn-primary dm-trigger-btn" style="padding: 4px 10px; font-size: 12px;">Chat</button>
+      `;
+
+      friendCard.querySelector(".dm-trigger-btn").addEventListener("click", () => {
+        openDirectMessage(friendName, friendAvatar);
+      });
+      allFriendsGrid.appendChild(friendCard);
+
+      const dmItem = document.createElement("div");
+      dmItem.className = "dm-item";
+      dmItem.innerHTML = `
+        <img src="${friendAvatar}" class="dm-avatar" />
+        <span class="dm-name">${friendName}</span>
+      `;
+      dmItem.addEventListener("click", () => {
+        document.querySelectorAll(".dm-item").forEach(el => el.classList.remove("active"));
+        dmItem.classList.add("active");
+        openDirectMessage(friendName, friendAvatar);
+      });
+      friendsDmList.appendChild(dmItem);
+    }
+  });
+}
+
+function openDirectMessage(friendName, friendAvatar) {
+  activeChatMode = "dm";
+  activeDmTarget = friendName;
+  activeChatTitle.textContent = `DM: ${friendName}`;
+
+  friendsView.classList.add("hidden");
+  chatFeedView.classList.remove("hidden");
+  navFriendsBtn.classList.remove("active");
+  navGlobalBtn.classList.remove("active");
+
+  loadDmMessages(friendName);
+}
+
+function loadGlobalMessages() {
+  if (unsubMessages) unsubMessages();
+  const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+  unsubMessages = onSnapshot(q, (snapshot) => {
+    if (activeChatMode === "global") {
+      renderMessages(snapshot);
+    }
+  });
+}
+
+function loadDmMessages(friendName) {
+  if (unsubMessages) unsubMessages();
+  const dmChannelId = [currentUsername, friendName].sort().join("_");
+  const q = query(collection(db, "directMessages", dmChannelId, "messages"), orderBy("timestamp", "asc"));
+  
+  unsubMessages = onSnapshot(q, (snapshot) => {
+    if (activeChatMode === "dm" && activeDmTarget === friendName) {
+      renderMessages(snapshot);
+    }
+  });
+}
 
 let typingTimeout = null;
 messageInput.addEventListener("input", async () => {
   if (!currentUsername) return;
-  const userRef = doc(db, "typing", currentUsername);
+  const typingDocKey = activeChatMode === "global" ? `global_${currentUsername}` : `dm_${[currentUsername, activeDmTarget].sort().join("_")}_${currentUsername}`;
+  const userRef = doc(db, "typing", typingDocKey);
   await setDoc(userRef, { isTyping: true });
 
   clearTimeout(typingTimeout);
@@ -319,19 +617,30 @@ messageForm.addEventListener("submit", async (e) => {
   if (!text || !currentUsername) return;
 
   if (text.length > 650) {
-    alert(`Your message is too long (${text.length} characters). Please delete until it is 649 characters or fewer.`);
+    alert(`Your message is too long (${text.length} characters). Please keep it under 650 characters.`);
     return;
   }
 
   messageInput.value = "";
-  await deleteDoc(doc(db, "typing", currentUsername));
+  
+  const typingDocKey = activeChatMode === "global" ? `global_${currentUsername}` : `dm_${[currentUsername, activeDmTarget].sort().join("_")}_${currentUsername}`;
+  await deleteDoc(doc(db, "typing", typingDocKey)).catch(() => {});
   
   try {
-    await addDoc(collection(db, "messages"), {
-      text: text,
-      username: currentUsername,
-      timestamp: serverTimestamp()
-    });
+    if (activeChatMode === "global") {
+      await addDoc(collection(db, "messages"), {
+        text: text,
+        username: currentUsername,
+        timestamp: serverTimestamp()
+      });
+    } else {
+      const dmChannelId = [currentUsername, activeDmTarget].sort().join("_");
+      await addDoc(collection(db, "directMessages", dmChannelId, "messages"), {
+        text: text,
+        username: currentUsername,
+        timestamp: serverTimestamp()
+      });
+    }
   } catch (err) {
     console.error("Error sending message:", err);
   }
@@ -340,7 +649,6 @@ messageForm.addEventListener("submit", async (e) => {
 let lastSnapshot = null;
 let videoObserver = null;
 
-// IntersectionObserver setup to automatically play/pause videos based on visibility
 function setupVideoObserver() {
   if (videoObserver) videoObserver.disconnect();
 
@@ -359,7 +667,7 @@ function setupVideoObserver() {
 async function renderMessages(snapshot) {
   lastSnapshot = snapshot;
   if (snapshot.empty) {
-    messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Be the first to say hello!</div>`;
+    messagesContainer.innerHTML = `<div class="empty-state">No messages yet. Say hello!</div>`;
     return;
   }
   
@@ -415,11 +723,6 @@ async function renderMessages(snapshot) {
       });
     });
 
-    // Register all sent video elements with the IntersectionObserver
-    msgEl.querySelectorAll("video.inline-chat-video-emoji").forEach(video => {
-      videoObserver.observe(video);
-    });
-
     fragment.appendChild(msgEl);
   }
 
@@ -434,27 +737,26 @@ function triggerRerender() {
   }
 }
 
-const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-onSnapshot(q, (snapshot) => {
-  renderMessages(snapshot);
-});
-
 const typingQ = query(collection(db, "typing"));
 onSnapshot(typingQ, (snapshot) => {
   const typingUsers = [];
-  snapshot.forEach(doc => {
-    if (doc.id !== currentUsername && doc.data().isTyping) {
-      typingUsers.push(doc.id);
+  snapshot.forEach(docSnap => {
+    const docId = docSnap.id;
+    if (docSnap.data().isTyping) {
+      if (activeChatMode === "global" && docId.startsWith("global_") && !docId.endsWith(`_${currentUsername}`)) {
+        typingUsers.push(docId.replace("global_", ""));
+      } else if (activeChatMode === "dm") {
+        const expectedPrefix = `dm_${[currentUsername, activeDmTarget].sort().join("_")}_`;
+        if (docId.startsWith(expectedPrefix) && !docId.endsWith(`_${currentUsername}`)) {
+          typingUsers.push(activeDmTarget);
+        }
+      }
     }
   });
 
   if (typingUsers.length > 0) {
     typingIndicator.classList.remove("hidden");
-    if (typingUsers.length === 1) {
-      typingText.textContent = `${typingUsers[0]} is typing...`;
-    } else {
-      typingText.textContent = "Multiple people are typing...";
-    }
+    typingText.textContent = typingUsers.length === 1 ? `${typingUsers[0]} is typing...` : "Multiple people are typing...";
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   } else {
     typingIndicator.classList.add("hidden");
