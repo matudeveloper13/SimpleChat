@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>SimpleChat</title>
-    <link rel="stylesheet" href="style.css?v=fixdm5" />
+    <link rel="stylesheet" href="style.css?v=fixscroll6" />
 </head>
 <body class="dark-mode">
 
@@ -61,7 +61,7 @@
                         <span class="msg-time">Just now</span>
                     </div>
                     <div class="msg-bubble">
-                        ✨ Welcome! Click friend usernames to chat in Direct Messages.
+                        ✨ Welcome! Click friend usernames to chat in Direct Messages or send photos using the 📷 button.
                     </div>
                 </div>
             </div>
@@ -78,9 +78,11 @@
         <!-- Input Area -->
         <div class="input-section">
             <form id="message-form" class="message-form">
-                <div style="position: relative;">
-                    <button type="button" id="emoji-btn" class="btn-emoji" title="Open Media & Emoji Panel">😀</button>
-                    <!-- Emoji & GIF Popup Picker -->
+                <div style="position: relative; display: flex; align-items: center; gap: 6px;">
+                    <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Panel">😀</button>
+                    <!-- Dedicated Photo Upload Button -->
+                    <button type="button" id="photo-btn" class="btn-emoji" title="Send Photo from Gallery/PC">📷</button>
+                    <!-- Emoji Popup Picker -->
                     <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
                         <div class="discord-emoji-scroll-area" id="discord-emoji-grid"></div>
                     </div>

@@ -18,7 +18,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Create hidden file picker input for gallery/PC image uploads in DMs or global chat
+// Hidden file picker for direct photo/gallery uploads
 const fileInput = document.createElement("input");
 fileInput.type = "file";
 fileInput.accept = "image/*";
@@ -75,6 +75,7 @@ const viewUserBio = document.getElementById("view-user-bio");
 const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
 
 const emojiBtn = document.getElementById("emoji-btn");
+const photoBtn = document.getElementById("photo-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
@@ -260,23 +261,16 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Cleaned up missing broken local mp4 refs and added functional image upload button for gallery/PC
-const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
-const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
-
-// Add Upload Photo button into the picker area dynamically
-const uploadPickerBtn = document.createElement("button");
-uploadPickerBtn.className = "btn btn-primary full-width mb-10";
-uploadPickerBtn.textContent = "📁 Upload Image from Gallery/PC";
-uploadPickerBtn.style.fontSize = "12px";
-uploadPickerBtn.style.padding = "6px";
-uploadPickerBtn.onclick = () => {
-    discordEmojiPicker.classList.add("hidden");
+// Photo Button triggers gallery file selection
+photoBtn?.addEventListener("click", () => {
+    if (currentUsername === "Guest") {
+        authOverlay.classList.remove("hidden");
+        return;
+    }
     fileInput.click();
-};
-discordEmojiGrid.parentNode.insertBefore(uploadPickerBtn, discordEmojiGrid);
+});
 
-// Handle file selection and upload to Firebase Storage
+// Handle image upload and sending to active room (Global or DM)
 fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file || currentUsername === "Guest") return;
@@ -305,10 +299,13 @@ fileInput.addEventListener("change", async (e) => {
             timestamp: serverTimestamp()
         });
     } catch (err) {
-        alert("Failed to upload image: " + err.message);
+        alert("Failed to upload photo: " + err.message);
     }
     fileInput.value = "";
 });
+
+const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
 
 avatarFiles.forEach(av => {
     const imgThumb = document.createElement("img");
@@ -340,7 +337,7 @@ emojiBtn?.addEventListener("click", (e) => {
 });
 
 document.addEventListener("click", (e) => {
-    if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
+    if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn && e.target !== photoBtn) {
         discordEmojiPicker.classList.add("hidden");
     }
 });
@@ -401,6 +398,9 @@ messageForm?.addEventListener("submit", async (e) => {
 function loadMessagesFeed() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
+        // Check if user was already near the bottom before rendering new messages to prevent jumping
+        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 120;
+
         messagesContainer.innerHTML = "";
         snapshot.forEach(docSnap => {
             const msg = docSnap.data();
@@ -438,7 +438,11 @@ function loadMessagesFeed() {
 
             messagesContainer.appendChild(div);
         });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Only auto-scroll down if user was already at the bottom or just sent a message
+        if (isNearBottom) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
     });
 
     const typingQuery = query(collection(db, "typing"));
@@ -606,7 +610,7 @@ function openDirectMessage(friendName) {
                     <span class="msg-time">Just now</span>
                 </div>
                 <div class="msg-bubble">
-                    🔒 Direct Message conversation started with @${friendName}. You can chat or share photos from your gallery.
+                    🔒 Direct Message conversation started with @${friendName}. You can chat or share photos using the 📷 button.
                 </div>
             </div>
         </div>
