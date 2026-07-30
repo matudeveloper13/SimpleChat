@@ -12,7 +12,6 @@
   --bubble-sent-text: #ffffff;
   --danger: #dc3545;
   --success: #28a745;
-  --warning: #ffc107;
   --star-color: #000000;
   --body-gradient: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
   --modal-overlay: rgba(0, 0, 0, 0.5);
@@ -103,8 +102,35 @@ body {
 .top-left-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 10px; border-radius: var(--radius-lg); transition: background 0.15s ease; }
 .top-left-profile:hover { background: var(--border-color); }
 
-.profile-circle { width: 34px; height: 34px; border-radius: var(--radius-full); object-fit: cover; border: 1px solid var(--border-color); }
-.large-avatar { width: 80px; height: 80px; border-radius: var(--radius-full); object-fit: cover; border: 2px solid var(--primary); }
+/* Round Emoji Avatars */
+.emoji-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  user-select: none;
+}
+.profile-circle.emoji-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.msg-avatar-img.emoji-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.large-avatar.emoji-avatar {
+  width: 80px;
+  height: 80px;
+  font-size: 40px;
+  margin: 0 auto;
+}
 
 .user-status { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .theme-toggle-pill { background: var(--bg-color); border: 1px solid var(--border-color); width: 30px; height: 30px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; }
@@ -134,7 +160,6 @@ body {
 .msg.received { align-self: flex-start; }
 .msg.sent { align-self: flex-end; flex-direction: row-reverse; }
 
-.msg-avatar-img { cursor: pointer; flex-shrink: 0; width: 36px; height: 36px; border-radius: var(--radius-full); object-fit: cover; }
 .msg-content { display: flex; flex-direction: column; }
 .msg.sent .msg-content { align-items: flex-end; }
 .msg.received .msg-content { align-items: flex-start; }
@@ -150,7 +175,7 @@ body {
 .msg.received .msg-bubble { background: var(--bubble-received); color: var(--text-main); border: 1px solid var(--border-color); border-top-left-radius: 4px; }
 .msg.sent .msg-bubble { background: var(--bubble-sent); color: var(--bubble-sent-text); border-top-right-radius: 4px; }
 
-/* Uniform Tiny Emojis/Thumbnails inside the Emoji Picker Panel */
+/* Tiny Emoji Picker Panel */
 .discord-emoji-picker {
   position: absolute; bottom: 50px; left: 0; width: 260px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 10px; z-index: 50;
 }
@@ -161,11 +186,11 @@ body {
   font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;
 }
 .discord-picker-thumbnail {
-  width: 24px; height: 24px; object-fit: cover; border-radius: 4px; cursor: pointer;
+  width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer; background: #000;
 }
 .discord-emoji-item:hover, .discord-picker-thumbnail:hover { background: var(--border-color); transform: scale(1.1); }
 
-/* Sent Video/GIF Original Size Styling */
+/* Sent Video/GIF Original Size */
 .inline-chat-video-original {
   max-width: 100%;
   height: auto;
@@ -220,7 +245,7 @@ body {
 .input-group textarea { resize: vertical; min-height: 80px; }
 
 .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
-.preset-avatar { width: 50px; height: 50px; border-radius: var(--radius-full); cursor: pointer; border: 2px solid transparent; transition: transform 0.15s ease; }
+.preset-avatar { width: 50px; height: 50px; font-size: 24px; border-radius: var(--radius-full); cursor: pointer; border: 2px solid transparent; transition: transform 0.15s ease; }
 .preset-avatar:hover { border-color: var(--primary); transform: scale(1.1); }
 
 .hidden { display: none !important; }
