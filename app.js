@@ -69,26 +69,11 @@ const emojiBtn = document.getElementById("emoji-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
+const dmPhotoUploadBtn = document.getElementById("dm-photo-upload-btn");
+const dmPhotoFileInput = document.getElementById("dm-photo-file-input");
+
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
-
-// --- CREATE GALLERY PHOTO UPLOAD BUTTON (DM ONLY) ---
-const dmPhotoUploadBtn = document.createElement("label");
-dmPhotoUploadBtn.innerHTML = "🖼️";
-dmPhotoUploadBtn.title = "Send Photo from Gallery (DMs Only)";
-dmPhotoUploadBtn.id = "dm-photo-upload-btn";
-dmPhotoUploadBtn.className = "hidden";
-dmPhotoUploadBtn.style.cssText = "cursor: pointer; font-size: 20px; padding: 0 8px; display: flex; align-items: center; user-select: none;";
-
-const dmPhotoFileInput = document.createElement("input");
-dmPhotoFileInput.type = "file";
-dmPhotoFileInput.accept = "image/*";
-dmPhotoFileInput.style.display = "none";
-dmPhotoUploadBtn.appendChild(dmPhotoFileInput);
-
-if (messageForm) {
-    messageForm.insertBefore(dmPhotoUploadBtn, messageInput);
-}
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -96,7 +81,6 @@ const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
-let typingTimeout = null;
 const TENOR_API_KEY = "LIVDSRZULELA";
 
 function formatMessageTime(timestamp) {
@@ -148,7 +132,7 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
-    dmPhotoUploadBtn.classList.add("hidden");
+    if (dmPhotoUploadBtn) dmPhotoUploadBtn.classList.add("hidden");
     loadMessagesFeed();
 });
 
@@ -349,12 +333,10 @@ async function fetchTenorGifs(searchTerm = "trending") {
             
             const imgThumb = document.createElement("img");
             imgThumb.src = gifUrl;
-            imgThumb.style.cssText = "width: 100%; height: 65px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.1s;";
+            imgThumb.style.cssText = "width: 100%; height: 65px; object-fit: cover; border-radius: 4px; cursor: pointer;";
             
             imgThumb.addEventListener("click", async () => {
                 discordEmojiPicker.classList.add("hidden");
-                
-                // Instantly send GIF into current chat room
                 let userAvatar = "avatar1.png";
                 try {
                     const snap = await getDoc(doc(db, "users", currentUsername));
@@ -690,7 +672,7 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
-    dmPhotoUploadBtn.classList.remove("hidden"); // Reveal camera photo upload button ONLY in DMs
+    if (dmPhotoUploadBtn) dmPhotoUploadBtn.classList.remove("hidden"); 
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
