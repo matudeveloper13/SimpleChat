@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
@@ -79,6 +79,28 @@ let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
+
+// Formats Firestore timestamps or date objects cleanly into real human-readable time strings
+function formatMessageTime(timestamp) {
+    if (!timestamp) return "Just now";
+    let date;
+    if (typeof timestamp.toDate === "function") {
+        date = timestamp.toDate();
+    } else {
+        date = new Date(timestamp);
+    }
+    
+    if (isNaN(date.getTime())) return "Just now";
+    
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}
 
 themeToggleBtn?.addEventListener("click", () => {
     if (document.body.classList.contains("dark-mode")) {
@@ -281,14 +303,14 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Typing indicator handler
+// Fixed Typing Indicator Handler using document-level / user-specific docs to sync properly
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
     
-    // Update user typing status in Firestore
     try {
-        await setDoc(doc(db, "typing", `${roomKey}_${currentUsername}`), {
+        const typingDocRef = doc(db, "typing", `${roomKey}_${currentUsername}`);
+        await setDoc(typingDocRef, {
             username: currentUsername,
             room: roomKey,
             lastTyped: serverTimestamp()
@@ -297,13 +319,9 @@ messageInput?.addEventListener("input", async () => {
         if (typingTimeout) clearTimeout(typingTimeout);
         typingTimeout = setTimeout(async () => {
             try {
-                await setDoc(doc(db, "typing", `${roomKey}_${currentUsername}`), {
-                    username: "",
-                    room: roomKey,
-                    lastTyped: serverTimestamp()
-                });
+                await deleteDoc(typingDocRef);
             } catch(e){}
-        }, 2000);
+        }, 3000);
     } catch(e){}
 });
 
@@ -319,6 +337,12 @@ messageForm?.addEventListener("submit", async (e) => {
     } catch(e){}
 
     messageInput.value = "";
+    
+    // Clear typing status immediately upon sending message
+    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+    try {
+        await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
+    } catch(e){}
     
     let targetRoom = "global";
     if (currentChatRoom !== "global") {
@@ -355,12 +379,14 @@ function loadMessagesFeed() {
             const div = document.createElement("div");
             div.className = `msg ${isSent ? 'sent' : 'received'}`;
             
+            const readableTime = formatMessageTime(msg.timestamp);
+
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
                         <span class="msg-author">${msg.username}</span>
-                        <span class="msg-time">Now</span>
+                        <span class="msg-time">${readableTime}</span>
                     </div>
                     <div class="msg-bubble">${msg.text}</div>
                 </div>
@@ -375,21 +401,33 @@ function loadMessagesFeed() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
-    // Listen to typing indicators for current room
+    // Real-time listener for typing indicator updates across users
     const typingQuery = query(collection(db, "typing"));
     onSnapshot(typingQuery, (snap) => {
-        let activeTypingUser = null;
+        let activeTypingUsers = [];
         const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
 
         snap.forEach(d => {
             const data = d.data();
             if (data.room === currentRoomKey && data.username && data.username !== currentUsername) {
-                activeTypingUser = data.username;
+                // Check if the typing status is fresh (within last 5 seconds)
+                if (data.lastTyped) {
+                    const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
+                    if (new Date() - typedDate < 5000) {
+                        activeTypingUsers.push(data.username);
+                    }
+                } else {
+                    activeTypingUsers.push(data.username);
+                }
             }
         });
 
-        if (activeTypingUser) {
-            typingTextLabel.textContent = `@${activeTypingUser} is typing`;
+        if (activeTypingUsers.length > 0) {
+            if (activeTypingUsers.length === 1) {
+                typingTextLabel.textContent = `@${activeTypingUsers[0]} is typing`;
+            } else {
+                typingTextLabel.textContent = `Multiple users are typing`;
+            }
             typingIndicatorBox.classList.remove("hidden");
         } else {
             typingIndicatorBox.classList.add("hidden");
@@ -527,7 +565,7 @@ function openDirectMessage(friendName) {
             <div class="msg-content">
                 <div class="msg-header">
                     <span class="msg-author">System</span>
-                    <span class="msg-time">Now</span>
+                    <span class="msg-time">Just now</span>
                 </div>
                 <div class="msg-bubble">
                     🔒 Direct Message conversation started with @${friendName}.
