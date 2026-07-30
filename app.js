@@ -18,7 +18,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Hidden file picker for direct photo/gallery uploads
 const fileInput = document.createElement("input");
 fileInput.type = "file";
 fileInput.accept = "image/*";
@@ -140,6 +139,7 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
+    photoBtn.classList.add("hidden"); // Hide photo button in global chat
     loadMessagesFeed();
 });
 
@@ -261,19 +261,15 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Photo Button triggers gallery file selection
+// Photo Button triggers gallery file selection (Only active in DMs)
 photoBtn?.addEventListener("click", () => {
-    if (currentUsername === "Guest") {
-        authOverlay.classList.remove("hidden");
-        return;
-    }
+    if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
 });
 
-// Handle image upload and sending to active room (Global or DM)
 fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
-    if (!file || currentUsername === "Guest") return;
+    if (!file || currentUsername === "Guest" || currentChatRoom === "global") return;
 
     try {
         const fileRef = ref(storage, `chat_uploads/${Date.now()}_${file.name}`);
@@ -286,10 +282,7 @@ fileInput.addEventListener("change", async (e) => {
             if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
         } catch(e){}
 
-        let targetRoom = "global";
-        if (currentChatRoom !== "global") {
-            targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
-        }
+        const targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
 
         await addDoc(collection(db, "messages"), {
             text: `<img src="${downloadURL}" class="inline-chat-video-normal" style="max-width:220px; border-radius:8px;" />`,
@@ -298,6 +291,8 @@ fileInput.addEventListener("change", async (e) => {
             room: targetRoom,
             timestamp: serverTimestamp()
         });
+
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } catch (err) {
         alert("Failed to upload photo: " + err.message);
     }
@@ -393,13 +388,17 @@ messageForm?.addEventListener("submit", async (e) => {
         room: targetRoom,
         timestamp: serverTimestamp()
     });
+
+    // Force scroll smoothly to bottom instantly when sending your own message
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 50);
 });
 
 function loadMessagesFeed() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
-        // Check if user was already near the bottom before rendering new messages to prevent jumping
-        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 120;
+        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 200;
 
         messagesContainer.innerHTML = "";
         snapshot.forEach(docSnap => {
@@ -439,7 +438,7 @@ function loadMessagesFeed() {
             messagesContainer.appendChild(div);
         });
 
-        // Only auto-scroll down if user was already at the bottom or just sent a message
+        // Only auto-scroll if user was already at the bottom or if it's their own message
         if (isNearBottom) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -598,6 +597,7 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
+    photoBtn.classList.remove("hidden"); // Show photo button exclusively in DMs
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
@@ -615,6 +615,9 @@ function openDirectMessage(friendName) {
             </div>
         </div>
     `;
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 50);
 }
 
 async function acceptFriendRequest(friendName) {
