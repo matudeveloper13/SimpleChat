@@ -1,20 +1,29 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
-  authDomain: "simplechat-e1787.firebaseapp.com",
-  projectId: "simplechat-e1787",
-  storageBucket: "simplechat-e1787.firebasestorage.app",
-  messagingSenderId: "469168057769",
-  appId: "1:469168057769:web:d7f37ceae7b6d8227c28b8",
-  measurementId: "G-KDWQTRWZSQ"
+    apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
+    authDomain: "simplechat-e1787.firebaseapp.com",
+    projectId: "simplechat-e1787",
+    storageBucket: "simplechat-e1787.firebasestorage.app",
+    messagingSenderId: "469168057769",
+    appId: "1:469168057769:web:d7f37ceae7b6d8227c28b8",
+    measurementId: "G-KDWQTRWZSQ"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Create hidden file picker input for gallery/PC image uploads in DMs or global chat
+const fileInput = document.createElement("input");
+fileInput.type = "file";
+fileInput.accept = "image/*";
+fileInput.style.display = "none";
+document.body.appendChild(fileInput);
 
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
@@ -80,11 +89,10 @@ let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
 
-// Formats Firestore server timestamps or local fallback dates precisely
 function formatMessageTime(timestamp) {
     let date;
     if (!timestamp) {
-        date = new Date(); // Fallback to right now if serverTimestamp hasn't synced yet
+        date = new Date();
     } else if (typeof timestamp.toDate === "function") {
         date = timestamp.toDate();
     } else {
@@ -252,25 +260,54 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Cleaned up arrays to prevent 404 missing asset errors
-const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif3.mp4"];
+// Cleaned up missing broken local mp4 refs and added functional image upload button for gallery/PC
 const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
 const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
 
-gifFiles.forEach(gif => {
-    const videoThumb = document.createElement("video");
-    videoThumb.src = gif;
-    videoThumb.className = "discord-picker-thumbnail";
-    videoThumb.muted = true;
-    videoThumb.autoplay = true;
-    videoThumb.loop = true;
-    videoThumb.playsInline = true;
-    videoThumb.addEventListener("click", () => {
-        messageInput.value += ` <video src="${gif}" class="inline-chat-video-normal" autoplay loop muted playsinline></video> `;
-        messageInput.focus();
-        discordEmojiPicker.classList.add("hidden");
-    });
-    discordEmojiGrid.appendChild(videoThumb);
+// Add Upload Photo button into the picker area dynamically
+const uploadPickerBtn = document.createElement("button");
+uploadPickerBtn.className = "btn btn-primary full-width mb-10";
+uploadPickerBtn.textContent = "📁 Upload Image from Gallery/PC";
+uploadPickerBtn.style.fontSize = "12px";
+uploadPickerBtn.style.padding = "6px";
+uploadPickerBtn.onclick = () => {
+    discordEmojiPicker.classList.add("hidden");
+    fileInput.click();
+};
+discordEmojiGrid.parentNode.insertBefore(uploadPickerBtn, discordEmojiGrid);
+
+// Handle file selection and upload to Firebase Storage
+fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file || currentUsername === "Guest") return;
+
+    try {
+        const fileRef = ref(storage, `chat_uploads/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        let userAvatar = "avatar1.png";
+        try {
+            const snap = await getDoc(doc(db, "users", currentUsername));
+            if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
+        } catch(e){}
+
+        let targetRoom = "global";
+        if (currentChatRoom !== "global") {
+            targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
+        }
+
+        await addDoc(collection(db, "messages"), {
+            text: `<img src="${downloadURL}" class="inline-chat-video-normal" style="max-width:220px; border-radius:8px;" />`,
+            username: currentUsername,
+            avatar: userAvatar,
+            room: targetRoom,
+            timestamp: serverTimestamp()
+        });
+    } catch (err) {
+        alert("Failed to upload image: " + err.message);
+    }
+    fileInput.value = "";
 });
 
 avatarFiles.forEach(av => {
@@ -569,7 +606,7 @@ function openDirectMessage(friendName) {
                     <span class="msg-time">Just now</span>
                 </div>
                 <div class="msg-bubble">
-                    🔒 Direct Message conversation started with @${friendName}.
+                    🔒 Direct Message conversation started with @${friendName}. You can chat or share photos from your gallery.
                 </div>
             </div>
         </div>
