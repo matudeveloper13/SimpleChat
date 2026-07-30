@@ -68,13 +68,6 @@ const profileFriendActionBtn = document.getElementById("profile-friend-action-bt
 const emojiBtn = document.getElementById("emoji-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
-const tabEmojis = document.getElementById("tab-emojis");
-const tabGifs = document.getElementById("tab-gifs");
-const gifSearchContainer = document.getElementById("gif-search-container");
-const gifSearchInput = document.getElementById("gif-search-input");
-
-const dmPhotoUploadBtn = document.getElementById("dm-photo-upload-btn");
-const dmPhotoFileInput = document.getElementById("dm-photo-file-input");
 
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
@@ -82,19 +75,16 @@ const typingTextLabel = document.getElementById("typing-text-label");
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
-let currentUsername = "Guest";
+let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
-const TENOR_API_KEY = "LIVDSRZULELA";
 
-// Global cache to store messages per room for INSTANT 0-delay switching
-let globalMessagesCache = [];
-
+// Formats Firestore server timestamps or local fallback dates precisely
 function formatMessageTime(timestamp) {
     let date;
     if (!timestamp) {
-        date = new Date();
+        date = new Date(); // Fallback to right now if serverTimestamp hasn't synced yet
     } else if (typeof timestamp.toDate === "function") {
         date = timestamp.toDate();
     } else {
@@ -105,10 +95,15 @@ function formatMessageTime(timestamp) {
     
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
+    
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     
-    return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
+    if (isToday) {
+        return `Today at ${timeStr}`;
+    } else {
+        return `${monthStr}, ${timeStr}`;
+    }
 }
 
 themeToggleBtn?.addEventListener("click", () => {
@@ -136,20 +131,19 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
-    if (dmPhotoUploadBtn) dmPhotoUploadBtn.classList.add("hidden");
-    renderCurrentRoomMessages();
+    loadMessagesFeed();
 });
 
 tabRegister?.addEventListener("click", () => {
-    tabRegister.className = "btn btn-primary";
-    tabLogin.className = "btn";
+    tabRegister.className = "tab-btn active";
+    tabLogin.className = "tab-btn";
     registerForm.classList.remove("hidden");
     loginForm.classList.add("hidden");
 });
 
 tabLogin?.addEventListener("click", () => {
-    tabLogin.className = "btn btn-primary";
-    tabRegister.className = "btn";
+    tabLogin.className = "tab-btn active";
+    tabRegister.className = "tab-btn";
     loginForm.classList.remove("hidden");
     registerForm.classList.add("hidden");
 });
@@ -258,106 +252,50 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// --- EMOJI & TENOR GIF PICKER ---
-function renderEmojiTab() {
-    if (gifSearchContainer) gifSearchContainer.classList.add("hidden");
-    discordEmojiGrid.innerHTML = "";
+// Cleaned up arrays to prevent 404 missing asset errors
+const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif3.mp4"];
+const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
 
-    const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
-    const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉", "🚀", "✨", "🙌", "💯"];
-
-    avatarFiles.forEach(av => {
-        const imgThumb = document.createElement("img");
-        imgThumb.src = av;
-        imgThumb.style.cssText = "width: 36px; height: 36px; border-radius: 50%; object-fit: cover; cursor: pointer;";
-        imgThumb.addEventListener("click", () => {
-            messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;" /> `;
-            messageInput.focus();
-            discordEmojiPicker.classList.add("hidden");
-        });
-        discordEmojiGrid.appendChild(imgThumb);
+gifFiles.forEach(gif => {
+    const videoThumb = document.createElement("video");
+    videoThumb.src = gif;
+    videoThumb.className = "discord-picker-thumbnail";
+    videoThumb.muted = true;
+    videoThumb.autoplay = true;
+    videoThumb.loop = true;
+    videoThumb.playsInline = true;
+    videoThumb.addEventListener("click", () => {
+        messageInput.value += ` <video src="${gif}" class="inline-chat-video-normal" autoplay loop muted playsinline></video> `;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
     });
+    discordEmojiGrid.appendChild(videoThumb);
+});
 
-    basicEmojis.forEach(em => {
-        const emojiDiv = document.createElement("div");
-        emojiDiv.style.cssText = "font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px;";
-        emojiDiv.textContent = em;
-        emojiDiv.addEventListener("click", () => {
-            messageInput.value += em;
-            messageInput.focus();
-            discordEmojiPicker.classList.add("hidden");
-        });
-        discordEmojiGrid.appendChild(emojiDiv);
+avatarFiles.forEach(av => {
+    const imgThumb = document.createElement("img");
+    imgThumb.src = av;
+    imgThumb.className = "discord-picker-avatar-thumb";
+    imgThumb.addEventListener("click", () => {
+        messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /> `;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
     });
-}
-
-async function fetchTenorGifs(searchTerm = "trending") {
-    discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--text-muted); padding: 10px;">Loading GIFs...</p>`;
-    try {
-        const endpoint = searchTerm === "trending" 
-            ? `https://g.tenor.com/v1/trending?key=${TENOR_API_KEY}&limit=12`
-            : `https://g.tenor.com/v1/search?key=${TENOR_API_KEY}&q=${encodeURIComponent(searchTerm)}&limit=12`;
-            
-        const response = await fetch(endpoint);
-        const data = await response.json();
-        
-        discordEmojiGrid.innerHTML = "";
-        if (!data.results || data.results.length === 0) {
-            discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--text-muted); padding: 10px;">No GIFs found</p>`;
-            return;
-        }
-
-        data.results.forEach(result => {
-            const gifUrl = result.media[0].tinygif.url;
-            const imgThumb = document.createElement("img");
-            imgThumb.src = gifUrl;
-            imgThumb.style.cssText = "width: 100%; height: 65px; object-fit: cover; border-radius: 4px; cursor: pointer;";
-            
-            imgThumb.addEventListener("click", async () => {
-                discordEmojiPicker.classList.add("hidden");
-                let userAvatar = "avatar1.png";
-                try {
-                    const snap = await getDoc(doc(db, "users", currentUsername));
-                    if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-                } catch(e){}
-
-                const targetRoom = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-                
-                await addDoc(collection(db, "messages"), {
-                    text: `<img src="${gifUrl}" style="max-width:200px; border-radius:8px; display:block; margin-top:2px;" />`,
-                    username: currentUsername,
-                    avatar: userAvatar,
-                    room: targetRoom,
-                    timestamp: serverTimestamp()
-                });
-            });
-            discordEmojiGrid.appendChild(imgThumb);
-        });
-    } catch (err) {
-        discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--danger); padding: 10px;">Failed to load GIFs</p>`;
-    }
-}
-
-tabEmojis?.addEventListener("click", () => {
-    tabEmojis.classList.add("btn-primary");
-    tabGifs.classList.remove("btn-primary");
-    renderEmojiTab();
+    discordEmojiGrid.appendChild(imgThumb);
 });
 
-tabGifs?.addEventListener("click", () => {
-    tabGifs.classList.add("btn-primary");
-    tabEmojis.classList.remove("btn-primary");
-    if (gifSearchContainer) gifSearchContainer.classList.remove("hidden");
-    fetchTenorGifs("trending");
+basicEmojis.forEach(em => {
+    const emojiDiv = document.createElement("div");
+    emojiDiv.className = "discord-picker-emoji-thumb";
+    emojiDiv.textContent = em;
+    emojiDiv.addEventListener("click", () => {
+        messageInput.value += em;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
+    });
+    discordEmojiGrid.appendChild(emojiDiv);
 });
-
-gifSearchInput?.addEventListener("input", (e) => {
-    const q = e.target.value.trim();
-    if (q.length > 1) fetchTenorGifs(q);
-    else if (q.length === 0) fetchTenorGifs("trending");
-});
-
-renderEmojiTab();
 
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -368,38 +306,6 @@ document.addEventListener("click", (e) => {
     if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
         discordEmojiPicker.classList.add("hidden");
     }
-});
-
-// --- GALLERY PHOTO UPLOAD (DMS ONLY) ---
-dmPhotoUploadBtn?.addEventListener("click", () => {
-    if (currentChatRoom !== "global") dmPhotoFileInput.click();
-});
-
-dmPhotoFileInput?.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file || currentUsername === "Guest" || currentChatRoom === "global") return;
-
-    const reader = new FileReader();
-    reader.onload = async function(uploadEvent) {
-        const base64Image = uploadEvent.target.result;
-        let userAvatar = "avatar1.png";
-        try {
-            const snap = await getDoc(doc(db, "users", currentUsername));
-            if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-        } catch(e){}
-
-        const targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
-        
-        await addDoc(collection(db, "messages"), {
-            text: `<img src="${base64Image}" style="max-width:220px; border-radius:8px; display:block; margin-top:4px;" />`,
-            username: currentUsername,
-            avatar: userAvatar,
-            room: targetRoom,
-            timestamp: serverTimestamp()
-        });
-    };
-    reader.readAsDataURL(file);
-    dmPhotoFileInput.value = "";
 });
 
 messageInput?.addEventListener("input", async () => {
@@ -416,7 +322,9 @@ messageInput?.addEventListener("input", async () => {
 
         if (typingTimeout) clearTimeout(typingTimeout);
         typingTimeout = setTimeout(async () => {
-            try { await deleteDoc(typingDocRef); } catch(e){}
+            try {
+                await deleteDoc(typingDocRef);
+            } catch(e){}
         }, 3000);
     } catch(e){}
 });
@@ -439,66 +347,61 @@ messageForm?.addEventListener("submit", async (e) => {
         await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
     } catch(e){}
     
+    let targetRoom = "global";
+    if (currentChatRoom !== "global") {
+        targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
+    }
+
     await addDoc(collection(db, "messages"), {
         text,
         username: currentUsername,
         avatar: userAvatar,
-        room: roomKey,
+        room: targetRoom,
         timestamp: serverTimestamp()
     });
 });
 
-// --- ZERO-DELAY INSTANT ROOM RENDERER ---
-function renderCurrentRoomMessages() {
-    messagesContainer.innerHTML = "";
-    
-    globalMessagesCache.forEach(msg => {
-        let matchesRoom = false;
-        if (currentChatRoom === "global") {
-            matchesRoom = !msg.room || msg.room === "global";
-        } else {
-            const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
-            matchesRoom = msg.room === expectedDM;
-        }
-
-        if (!matchesRoom) return;
-
-        const isSent = msg.username === currentUsername;
-        const div = document.createElement("div");
-        div.className = `msg ${isSent ? 'sent' : 'received'}`;
-        
-        const readableTime = formatMessageTime(msg.timestamp);
-
-        div.innerHTML = `
-            <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
-            <div class="msg-content">
-                <div class="msg-header">
-                    <span class="msg-author">${msg.username}</span>
-                    <span class="msg-time">${readableTime}</span>
-                </div>
-                <div class="msg-bubble">${msg.text}</div>
-            </div>
-        `;
-
-        div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
-            el.addEventListener("click", () => openUserProfileModal(msg.username));
-        });
-
-        messagesContainer.appendChild(div);
-    });
-
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Global listener populates cache immediately, enabling instant room switching with zero delay
-function initGlobalMessagesListener() {
+function loadMessagesFeed() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     onSnapshot(q, (snapshot) => {
-        globalMessagesCache = [];
+        messagesContainer.innerHTML = "";
         snapshot.forEach(docSnap => {
-            globalMessagesCache.push(docSnap.data());
+            const msg = docSnap.data();
+            
+            let matchesRoom = false;
+            if (currentChatRoom === "global") {
+                matchesRoom = !msg.room || msg.room === "global";
+            } else {
+                const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
+                matchesRoom = msg.room === expectedDM;
+            }
+
+            if (!matchesRoom) return;
+
+            const isSent = msg.username === currentUsername;
+            const div = document.createElement("div");
+            div.className = `msg ${isSent ? 'sent' : 'received'}`;
+            
+            const readableTime = formatMessageTime(msg.timestamp);
+
+            div.innerHTML = `
+                <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
+                <div class="msg-content">
+                    <div class="msg-header">
+                        <span class="msg-author">${msg.username}</span>
+                        <span class="msg-time">${readableTime}</span>
+                    </div>
+                    <div class="msg-bubble">${msg.text}</div>
+                </div>
+            `;
+
+            div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
+                el.addEventListener("click", () => openUserProfileModal(msg.username));
+            });
+
+            messagesContainer.appendChild(div);
         });
-        renderCurrentRoomMessages();
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
     const typingQuery = query(collection(db, "typing"));
@@ -521,7 +424,11 @@ function initGlobalMessagesListener() {
         });
 
         if (activeTypingUsers.length > 0) {
-            typingTextLabel.textContent = activeTypingUsers.length === 1 ? `@${activeTypingUsers[0]} is typing` : `Multiple users are typing`;
+            if (activeTypingUsers.length === 1) {
+                typingTextLabel.textContent = `@${activeTypingUsers[0]} is typing`;
+            } else {
+                typingTextLabel.textContent = `Multiple users are typing`;
+            }
             typingIndicatorBox.classList.remove("hidden");
         } else {
             typingIndicatorBox.classList.add("hidden");
@@ -529,7 +436,7 @@ function initGlobalMessagesListener() {
     });
 }
 
-initGlobalMessagesListener();
+loadMessagesFeed();
 
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
@@ -650,12 +557,23 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
-    if (dmPhotoUploadBtn) dmPhotoUploadBtn.classList.remove("hidden"); 
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
-    // Instantly renders cached messages with zero delay
-    renderCurrentRoomMessages();
+    messagesContainer.innerHTML = `
+        <div class="msg received">
+            <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
+            <div class="msg-content">
+                <div class="msg-header">
+                    <span class="msg-author">System</span>
+                    <span class="msg-time">Just now</span>
+                </div>
+                <div class="msg-bubble">
+                    🔒 Direct Message conversation started with @${friendName}.
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 async function acceptFriendRequest(friendName) {
