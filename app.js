@@ -81,6 +81,7 @@ const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
+let typingTimeout = null;
 const TENOR_API_KEY = "LIVDSRZULELA";
 
 function formatMessageTime(timestamp) {
@@ -137,15 +138,15 @@ exitDmBtn?.addEventListener("click", () => {
 });
 
 tabRegister?.addEventListener("click", () => {
-    tabRegister.className = "tab-btn active";
-    tabLogin.className = "tab-btn";
+    tabRegister.className = "tab-btn btn btn-primary";
+    tabLogin.className = "tab-btn btn";
     registerForm.classList.remove("hidden");
     loginForm.classList.add("hidden");
 });
 
 tabLogin?.addEventListener("click", () => {
-    tabLogin.className = "tab-btn active";
-    tabRegister.className = "tab-btn";
+    tabLogin.className = "tab-btn btn btn-primary";
+    tabRegister.className = "tab-btn btn";
     loginForm.classList.remove("hidden");
     registerForm.classList.add("hidden");
 });

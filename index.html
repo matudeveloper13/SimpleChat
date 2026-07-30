@@ -7,192 +7,166 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
-
-    <!-- Auth Overlay -->
-    <div id="auth-overlay" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>Welcome to SimpleChat</h2>
-                <button id="close-modal-btn" class="btn-close">&times;</button>
-            </div>
-            <div class="auth-tabs">
-                <button id="tab-login" class="tab-btn active">Login</button>
-                <button id="tab-register" class="tab-btn">Register</button>
-            </div>
-            <div id="auth-error" class="error-msg"></div>
-            
-            <form id="login-form" class="auth-form">
-                <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
-                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
-                <button type="submit" class="btn btn-primary">Login</button>
-            </form>
-
-            <form id="register-form" class="auth-form hidden">
-                <input type="text" id="register-username" placeholder="Choose a Username" required autocomplete="username">
-                <input type="password" id="register-password" placeholder="Choose a Password" required autocomplete="new-password">
-                <button type="submit" class="btn btn-primary">Register</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Profile Overlay -->
-    <div id="profile-overlay" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>Edit Profile</h2>
-                <button id="close-profile-modal" class="btn-close">&times;</button>
-            </div>
-            <div class="profile-edit-body" style="text-align: center; display: flex; flex-direction: column; gap: 15px; padding: 10px 0;">
-                <div style="position: relative; width: 80px; height: 80px; margin: 0 auto;">
-                    <img id="edit-modal-avatar" src="avatar1.png" alt="Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);" />
-                    <button id="open-avatar-selector" type="button" class="btn btn-sm btn-primary" style="position: absolute; bottom: 0; right: 0; font-size: 10px; padding: 2px 6px;">Change</button>
-                </div>
-                <h3 id="profile-display-username" style="margin: 0; font-size: 18px;">Username</h3>
-                <div style="text-align: left;">
-                    <label style="font-size: 12px; color: var(--text-muted);">Bio</label>
-                    <textarea id="bio-input" maxlength="150" rows="3" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); resize: none;"></textarea>
-                    <span id="bio-char-count" style="font-size: 11px; color: var(--text-muted); float: right;">150 characters left</span>
-                </div>
-                <button id="save-bio-btn" class="btn btn-primary" style="margin-top: 10px;">Save Profile</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Avatar Selector Overlay -->
-    <div id="avatar-selector-overlay" class="modal-overlay hidden">
-        <div class="modal-card" style="max-width: 320px;">
-            <div class="modal-header">
-                <h2>Choose Avatar</h2>
-                <button id="close-avatar-selector" class="btn-close">&times;</button>
-            </div>
-            <div style="display: flex; justify-content: space-around; padding: 20px 0;">
-                <img src="avatar1.png" class="preset-avatar" data-avatar="avatar1.png" style="width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;" />
-                <img src="avatar2.png" class="preset-avatar" data-avatar="avatar2.png" style="width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;" />
-                <img src="avatar3.png" class="preset-avatar" data-avatar="avatar3.png" style="width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;" />
-                <img src="avatar4.png" class="preset-avatar" data-avatar="avatar4.png" style="width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;" />
-                <img src="avatar5.png" class="preset-avatar" data-avatar="avatar5.png" style="width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;" />
-            </div>
-        </div>
-    </div>
-
-    <!-- View Profile Overlay -->
-    <div id="view-profile-overlay" class="modal-overlay hidden">
-        <div class="modal-card" style="text-align: center;">
-            <div class="modal-header">
-                <h2>User Profile</h2>
-                <button id="close-view-profile" class="btn-close">&times;</button>
-            </div>
-            <div style="padding: 15px 0; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                <img id="view-user-avatar" src="avatar1.png" alt="Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);" />
-                <h3 id="view-user-name" style="margin: 0; font-size: 18px;"></h3>
-                <p id="view-user-bio" style="font-size: 13px; color: var(--text-muted); background: var(--input-bg); padding: 10px; border-radius: 6px; width: 100%; min-height: 40px; word-break: break-word;"></p>
-                <button id="profile-friend-action-btn" class="btn btn-primary" style="width: 100%; margin-top: 5px;">Send Friend Request</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Layout Container -->
     <div class="app-container">
-        
-        <!-- Sidebar -->
+        <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-top">
-                <div id="top-left-profile" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px; border-radius: 6px; transition: background 0.2s;" title="Edit Profile">
-                    <img id="my-mini-avatar" src="avatar1.png" alt="Mini Avatar" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
-                    <span id="my-mini-username" style="font-weight: 600; font-size: 14px;">yanabanaya</span>
+                <h2 style="font-size: 18px; margin-bottom: 10px;">SimpleChat</h2>
+                <button id="nav-friends-btn" class="btn">👥 Friends & Requests</button>
+                <button id="back-to-chat-btn" class="btn hidden">💬 Return to Chat</button>
+            </div>
+            <div class="sidebar-bottom">
+                <div id="top-left-profile" class="user-profile-bar">
+                    <img id="my-mini-avatar" src="avatar1.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                    <span id="my-mini-username" style="font-size: 13px; font-weight: 600;">Guest</span>
                 </div>
-                <button id="theme-toggle-btn" class="btn btn-sm" title="Toggle Theme">☀️</button>
-            </div>
-            
-            <div class="sidebar-nav" style="margin-top: 15px; display: flex; flex-direction: column; gap: 6px;">
-                <button id="back-to-chat-btn" class="btn btn-sm btn-secondary" style="width: 100%; text-align: left;">💬 Global Chat</button>
-                <button id="nav-friends-btn" class="btn btn-sm btn-secondary" style="width: 100%; text-align: left;">👥 Friends & Requests</button>
-            </div>
-
-            <!-- Friends / DMs Channel Sidebar List container if needed -->
-            <div class="sidebar-channels" style="margin-top: 20px; flex: 1; overflow-y: auto;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px;">Direct Messages</div>
-                <div id="sidebar-dms-container" style="display: flex; flex-direction: column; gap: 4px;">
-                    <!-- Active DM shortcuts can go here -->
-                </div>
-            </div>
-
-            <div class="sidebar-footer" style="margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-color);">
-                <button id="auth-modal-btn" class="btn btn-primary" style="width: 100%;">Sign In / Register</button>
-                <button id="logout-btn" class="btn btn-danger hidden" style="width: 100%;">Sign Out</button>
+                <button id="theme-toggle-btn" class="btn">☀️</button>
+                <button id="auth-modal-btn" class="btn btn-primary">Login / Register</button>
+                <button id="logout-btn" class="btn hidden" style="background: var(--danger); color: white; border: none;">Logout</button>
             </div>
         </aside>
 
-        <!-- Main Chat Section -->
-        <main id="global-chat-section" class="chat-main">
-            <header class="chat-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <!-- Main Chat Area -->
+        <main class="main-content" id="global-chat-section">
+            <header class="chat-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <h2 id="chat-room-title" style="margin: 0; font-size: 16px;">global chat</h2>
-                    <button id="exit-dm-btn" class="btn btn-sm btn-danger hidden" style="font-size: 11px; padding: 2px 8px;">✕ Close DM</button>
+                    <h3 id="chat-room-title" style="font-size: 16px;">global chat</h3>
+                    <button id="exit-dm-btn" class="btn btn-sm hidden" style="font-size: 11px; padding: 2px 6px;">Exit DM</button>
                 </div>
             </header>
 
-            <div id="messages-container" class="messages-container">
-                <!-- Messages populated dynamically -->
+            <div id="messages-container" class="messages-container"></div>
+
+            <!-- Typing Notification Area -->
+            <div id="typing-indicator-box" class="hidden" style="padding: 2px 20px; font-size: 11px; color: var(--text-muted); background: transparent;">
+                <span id="typing-text-label">someone is typing...</span>
             </div>
 
-            <div id="typing-indicator-box" class="hidden" style="padding: 2px 15px; font-size: 11px; color: var(--text-muted);">
-                <span id="typing-text-label"></span>...
-            </div>
-
-            <div class="chat-input-area" style="position: relative;">
-                
-                <!-- Discord style Emoji & GIF Picker Popup Panel -->
-                <div id="discord-emoji-picker" class="hidden" style="position: absolute; bottom: 65px; left: 10px; width: 280px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100; overflow: hidden;">
-                    <div id="discord-emoji-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; max-height: 200px; overflow-y: auto;">
-                        <!-- Grid elements loaded dynamically -->
-                    </div>
+            <!-- Input & Picker Bar -->
+            <footer class="chat-input-area">
+                <!-- Emoji/GIF Pop-up Window -->
+                <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
+                    <div id="discord-emoji-grid" class="discord-emoji-grid"></div>
                 </div>
 
-                <form id="message-form" style="display: flex; align-items: center; gap: 8px;">
-                    <!-- Photo upload button (Hidden by default, shown only in DMs) -->
-                    <label id="dm-photo-upload-btn" class="hidden" title="Send Photo from Gallery" style="cursor: pointer; font-size: 20px; display: flex; align-items: center;">
-                        🖼️
-                        <input type="file" id="dm-photo-file-input" accept="image/*" style="display: none;" />
-                    </label>
-
-                    <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" style="flex: 1;" />
+                <form id="message-form">
+                    <button type="button" id="emoji-btn" class="icon-btn">😊</button>
                     
-                    <button type="button" id="emoji-btn" title="Open Emojis & GIFs" style="background: none; border: none; cursor: pointer; font-size: 20px;">😊</button>
+                    <!-- Hidden File Input for Direct Message Photo uploads -->
+                    <input type="file" id="dm-photo-file-input" accept="image/*" class="hidden">
+                    <button type="button" id="dm-photo-upload-btn" class="icon-btn hidden" title="Upload Photo">📷</button>
                     
-                    <button type="submit" class="btn btn-primary">Send</button>
+                    <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary" style="padding: 6px 12px;">Send</button>
                 </form>
-            </div>
+            </footer>
         </main>
 
-        <!-- Friends Section -->
-        <section id="friends-section" class="chat-main hidden" style="padding: 20px; overflow-y: auto;">
-            <h2>Friends & Requests</h2>
-            
-            <div style="margin: 20px 0; background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                <h3>Add Friend</h3>
-                <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <input type="text" id="add-friend-input" placeholder="Enter username..." style="flex: 1;" />
-                    <button id="send-friend-request-btn" class="btn btn-primary">Add</button>
-                </div>
-                <div id="friend-action-msg" style="font-size: 12px; margin-top: 6px; color: var(--text-muted);"></div>
+        <!-- Friends Management Section -->
+        <section class="main-content hidden" id="friends-section" style="padding: 30px; overflow-y: auto;">
+            <h2 style="margin-bottom: 20px;">Friends Management</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; max-width: 400px;">
+                <input type="text" id="add-friend-input" placeholder="Enter username..." style="flex:1; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
+                <button id="send-friend-request-btn" class="btn btn-primary">Add Friend</button>
             </div>
+            <p id="friend-action-msg" style="font-size: 13px; margin-bottom: 20px; color: var(--success);"></p>
 
-            <div style="margin-bottom: 20px;">
-                <h3>Pending Requests</h3>
-                <div id="pending-requests-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                    <!-- Pending requests loaded dynamically -->
-                </div>
-            </div>
+            <h3 style="font-size: 15px; margin-bottom: 10px;">Pending Friend Requests</h3>
+            <div id="pending-requests-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; max-width: 400px;"></div>
 
-            <div>
-                <h3>My Friends List</h3>
-                <div id="friends-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                    <!-- Friends list loaded dynamically -->
-                </div>
-            </div>
+            <h3 style="font-size: 15px; margin-bottom: 10px;">My Friends List</h3>
+            <div id="friends-list-container" style="display: flex; flex-direction: column; gap: 8px; max-width: 400px;"></div>
         </section>
+    </div>
 
+    <!-- Auth Modal Overlay -->
+    <div id="auth-overlay" class="overlay hidden">
+        <div class="modal">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Account Access</h3>
+                <button id="close-modal-btn" class="icon-btn">✕</button>
+            </div>
+            <div style="display: flex; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <button id="tab-login" class="btn" style="flex:1;">Login</button>
+                <button id="tab-register" class="btn btn-primary" style="flex:1;">Register</button>
+            </div>
+            <p id="auth-error" style="color: var(--danger); font-size: 12px;"></p>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="text" id="login-username" placeholder="Username" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
+                <input type="password" id="login-password" placeholder="Password" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="text" id="register-username" placeholder="Choose Username" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
+                <input type="password" id="register-password" placeholder="Choose Password" required style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color);">
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- My Profile Settings Modal -->
+    <div id="profile-overlay" class="overlay hidden">
+        <div class="modal">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Edit Profile</h3>
+                <button id="close-profile-modal" class="icon-btn">✕</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img id="edit-modal-avatar" src="avatar1.png" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <h4 id="profile-display-username">Username</h4>
+                    <button id="open-avatar-selector" class="btn" style="margin-top: 6px; font-size: 11px; padding: 4px 8px;">Change Avatar</button>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 12px; font-weight: 600;">Bio</label>
+                <textarea id="bio-input" maxlength="150" rows="3" style="padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); resize: none;"></textarea>
+                <span id="bio-char-count" style="font-size: 11px; color: var(--text-muted); text-align: right;">150 characters left</span>
+            </div>
+            <button id="save-bio-btn" class="btn btn-primary">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Avatar Preset Selector Overlay -->
+    <div id="avatar-selector-overlay" class="overlay hidden">
+        <div class="modal" style="width: 300px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Select Avatar</h3>
+                <button id="close-avatar-selector" class="icon-btn">✕</button>
+            </div>
+            <div style="display: flex; justify-content: space-around; padding: 10px 0;">
+                <img src="avatar1.png" class="preset-avatar" data-avatar="avatar1.png" style="width:45px; height:45px; border-radius:50%; cursor:pointer; object-fit:cover;">
+                <img src="avatar2.png" class="preset-avatar" data-avatar="avatar2.png" style="width:45px; height:45px; border-radius:50%; cursor:pointer; object-fit:cover;">
+                <img src="avatar3.png" class="preset-avatar" data-avatar="avatar3.png" style="width:45px; height:45px; border-radius:50%; cursor:pointer; object-fit:cover;">
+                <img src="avatar4.png" class="preset-avatar" data-avatar="avatar4.png" style="width:45px; height:45px; border-radius:50%; cursor:pointer; object-fit:cover;">
+                <img src="avatar5.png" class="preset-avatar" data-avatar="avatar5.png" style="width:45px; height:45px; border-radius:50%; cursor:pointer; object-fit:cover;">
+            </div>
+        </div>
+    </div>
+
+    <!-- View Other User Profile Modal -->
+    <div id="view-profile-overlay" class="overlay hidden">
+        <div class="modal">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>User Profile</h3>
+                <button id="close-view-profile" class="icon-btn">✕</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img id="view-user-avatar" src="avatar1.png" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <h4 id="view-user-name" style="font-size: 16px;">Username</h4>
+                </div>
+            </div>
+            <div style="background: var(--input-bg); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <p style="font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--text-muted);">BIO</p>
+                <p id="view-user-bio" style="font-size: 13px; word-break: break-word;">Loading bio...</p>
+            </div>
+            <button id="profile-friend-action-btn" class="btn btn-primary">Send Friend Request</button>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
