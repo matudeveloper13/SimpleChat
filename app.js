@@ -75,7 +75,6 @@ let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 
-// Working Dark/Light Mode Toggle
 themeToggleBtn?.addEventListener("click", () => {
     if (document.body.classList.contains("dark-mode")) {
         document.body.classList.remove("dark-mode");
@@ -217,9 +216,10 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Setup 4 GIFs & 5 Avatars in Panel
-const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif.mp4"];
+// Setup 4 MP4s (`myvideo.mp4`, `gif1.mp4`, `gif2.mp4`, `gif3.mp4`), 5 Avatars, and Basic Emojis
+const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif3.mp4"];
 const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
 
 gifFiles.forEach(gif => {
     const videoThumb = document.createElement("video");
@@ -249,6 +249,18 @@ avatarFiles.forEach(av => {
     discordEmojiGrid.appendChild(imgThumb);
 });
 
+basicEmojis.forEach(em => {
+    const emojiDiv = document.createElement("div");
+    emojiDiv.className = "discord-picker-emoji-thumb";
+    emojiDiv.textContent = em;
+    emojiDiv.addEventListener("click", () => {
+        messageInput.value += em;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
+    });
+    discordEmojiGrid.appendChild(emojiDiv);
+});
+
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     discordEmojiPicker.classList.toggle("hidden");
@@ -273,7 +285,7 @@ messageForm?.addEventListener("submit", async (e) => {
 
     messageInput.value = "";
     
-    let targetRoom = currentChatRoom;
+    let targetRoom = "global";
     if (currentChatRoom !== "global") {
         targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
     }
@@ -447,6 +459,22 @@ function openDirectMessage(friendName) {
     chatRoomTitle.textContent = `DM with @${friendName}`;
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
+    
+    // Clear feed instantly to show a brand new blank/isolated conversation room
+    messagesContainer.innerHTML = `
+        <div class="msg received">
+            <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
+            <div class="msg-content">
+                <div class="msg-header">
+                    <span class="msg-author">System</span>
+                    <span class="msg-time">Now</span>
+                </div>
+                <div class="msg-bubble">
+                    🔒 Direct Message conversation started with @${friendName}.
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 async function acceptFriendRequest(friendName) {
