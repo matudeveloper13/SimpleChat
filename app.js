@@ -25,10 +25,12 @@ const registerForm = document.getElementById("register-form");
 const authError = document.getElementById("auth-error");
 const tabRegister = document.getElementById("tab-register");
 const tabLogin = document.getElementById("tab-login");
+const themeToggleBtn = document.getElementById("theme-toggle-btn");
 
 const messageForm = document.getElementById("message-form");
 const messageInput = document.getElementById("message-input");
 const messagesContainer = document.getElementById("messages-container");
+const chatRoomTitle = document.getElementById("chat-room-title");
 
 const navFriendsBtn = document.getElementById("nav-friends-btn");
 const backToChatBtn = document.getElementById("back-to-chat-btn");
@@ -71,6 +73,17 @@ const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
 let currentUsername = "matutbanana2";
 let viewingProfileUsername = null;
+let currentChatRoom = "global";
+
+themeToggleBtn?.addEventListener("click", () => {
+    if (document.body.classList.contains("dark-mode")) {
+        document.body.classList.remove("dark-mode");
+        themeToggleBtn.textContent = "☀️";
+    } else {
+        document.body.classList.add("dark-mode");
+        themeToggleBtn.textContent = "🌙";
+    }
+});
 
 navFriendsBtn?.addEventListener("click", () => {
     globalChatSection.classList.add("hidden");
@@ -81,6 +94,8 @@ navFriendsBtn?.addEventListener("click", () => {
 backToChatBtn?.addEventListener("click", () => {
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
+    currentChatRoom = "global";
+    chatRoomTitle.textContent = "global chat";
 });
 
 tabRegister?.addEventListener("click", () => {
@@ -201,7 +216,26 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
+// Emoji & GIF Setup (gifs shown as small thumbnails in panel, original size when sent)
 const popularEmojis = ["😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀", "🙏", "👌", "❤️", "😊"];
+const gifFiles = ["gif1.mp4", "gif2.mp4", "gif3.mp4"];
+
+gifFiles.forEach(gif => {
+    const videoThumb = document.createElement("video");
+    videoThumb.src = gif;
+    videoThumb.className = "discord-picker-thumbnail";
+    videoThumb.muted = true;
+    videoThumb.autoplay = true;
+    videoThumb.loop = true;
+    videoThumb.playsInline = true;
+    videoThumb.addEventListener("click", () => {
+        messageInput.value += ` <video src="${gif}" class="inline-chat-video-original" autoplay loop muted playsinline></video> `;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
+    });
+    discordEmojiGrid.appendChild(videoThumb);
+});
+
 popularEmojis.forEach(emoji => {
     const span = document.createElement("span");
     span.className = "discord-emoji-item";
@@ -241,6 +275,7 @@ messageForm?.addEventListener("submit", async (e) => {
         text,
         username: currentUsername,
         avatar: userAvatar,
+        room: currentChatRoom,
         timestamp: serverTimestamp()
     });
 });
@@ -250,6 +285,16 @@ onSnapshot(q, (snapshot) => {
     messagesContainer.innerHTML = "";
     snapshot.forEach(docSnap => {
         const msg = docSnap.data();
+        let matchesRoom = false;
+        if (currentChatRoom === "global") {
+            matchesRoom = !msg.room || msg.room === "global";
+        } else {
+            matchesRoom = (msg.room === `dm_${currentUsername}_${currentChatRoom}`) || 
+                          (msg.room === `dm_${currentChatRoom}_${currentUsername}`);
+        }
+
+        if (!matchesRoom) return;
+
         const isSent = msg.username === currentUsername;
         const div = document.createElement("div");
         div.className = `msg ${isSent ? 'sent' : 'received'}`;
@@ -295,8 +340,11 @@ async function openUserProfileModal(username) {
             if (myDoc.exists()) {
                 const myData = myDoc.data();
                 if ((myData.friends || []).includes(username)) {
-                    profileFriendActionBtn.textContent = "Friends";
-                    profileFriendActionBtn.disabled = true;
+                    profileFriendActionBtn.textContent = "Friends (Open DM)";
+                    profileFriendActionBtn.onclick = () => {
+                        viewProfileOverlay.classList.add("hidden");
+                        openDirectMessage(username);
+                    };
                 } else {
                     const targetDoc = await getDoc(doc(db, "users", username));
                     const targetRequests = (targetDoc.data() || {}).friendRequests || [];
@@ -319,6 +367,8 @@ closeViewProfile?.addEventListener("click", () => viewProfileOverlay.classList.a
 
 profileFriendActionBtn?.addEventListener("click", async () => {
     if (currentUsername === "Guest" || !viewingProfileUsername) return;
+    if (profileFriendActionBtn.textContent.includes("Open DM")) return;
+    
     await updateDoc(doc(db, "users", viewingProfileUsername), {
         friendRequests: arrayUnion(currentUsername)
     });
@@ -376,12 +426,19 @@ async function loadFriendsAndRequests() {
     } else {
         friends.forEach(friend => {
             const row = document.createElement("div");
-            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
-            row.innerHTML = `<span style="cursor: pointer; font-weight: 600;">${friend}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
-            row.querySelector("span").addEventListener("click", () => openUserProfileModal(friend));
+            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
+            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${friend}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
+            row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
         });
     }
+}
+
+function openDirectMessage(friendName) {
+    currentChatRoom = friendName;
+    chatRoomTitle.textContent = `DM with @${friendName}`;
+    friendsSection.classList.add("hidden");
+    globalChatSection.classList.remove("hidden");
 }
 
 async function acceptFriendRequest(friendName) {

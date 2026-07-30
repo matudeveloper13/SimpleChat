@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>SimpleChat</title>
-    <link rel="stylesheet" href="style.css?v=updated" />
+    <link rel="stylesheet" href="style.css?v=perfect" />
 </head>
 <body class="dark-mode">
 
@@ -34,7 +34,7 @@
             </div>
         </div>
         <div id="user-status" class="user-status">
-            <span class="secure-sync-indicator" style="background: rgba(40,167,69,0.15); color: var(--success); padding: 4px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600;">🟢 Live Sync</span>
+            <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">🌙</button>
             <button id="logout-btn" class="btn btn-danger hidden" style="padding: 4px 10px; font-size: 12px;">Log Out</button>
             <button id="auth-modal-btn" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Sign In</button>
         </div>
@@ -43,16 +43,11 @@
     <!-- Global Chat View Section -->
     <div id="global-chat-section" class="chat-view-section">
         <div class="sub-nav-bar">
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-weight: 700; color: var(--text-main);">🔒 global chat</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="chat-room-title" style="font-weight: 700; color: var(--text-main);">global chat</span>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button id="nav-friends-btn" class="friends-nav-pill" title="Open Friends & Requests">👥 Friends</button>
-                <div style="display: flex; gap: 6px;">
-                    <span style="color: var(--danger); font-size: 10px;">🔴</span>
-                    <span style="color: var(--warning); font-size: 10px;">🟡</span>
-                    <span style="color: var(--success); font-size: 10px;">🟢</span>
-                </div>
             </div>
         </div>
 
@@ -66,7 +61,7 @@
                         <span class="msg-time">Now</span>
                     </div>
                     <div class="msg-bubble">
-                        ✨ Welcome back! Database connection and profile sync active.
+                        ✨ Welcome! Click friend usernames to chat in Direct Messages.
                     </div>
                 </div>
             </div>
@@ -77,7 +72,7 @@
             <form id="message-form" class="message-form">
                 <div style="position: relative;">
                     <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard">😀</button>
-                    <!-- Emoji Popup Picker -->
+                    <!-- Emoji & GIF Popup Picker -->
                     <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
                         <div class="discord-emoji-scroll-area" id="discord-emoji-grid"></div>
                     </div>
@@ -94,7 +89,7 @@
     <div id="friends-section" class="chat-view-section hidden" style="flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-color);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2 style="font-size: 16px;">Friends & Direct Messages</h2>
-            <button id="back-to-chat-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">Back to Chat</button>
+            <button id="back-to-chat-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">Back to Global Chat</button>
         </div>
         <div style="display: flex; gap: 10px;">
             <input type="text" id="add-friend-input" placeholder="Enter username to add..." style="flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main);" />
@@ -110,7 +105,7 @@
         </div>
 
         <div style="margin-top: 20px;">
-            <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">My Friends</h3>
+            <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">My Friends (Click to Open DM)</h3>
             <div id="friends-list-container" style="display: flex; flex-direction: column; gap: 8px;">
                 <p style="color: var(--text-muted); font-size: 13px;">No friends added yet.</p>
             </div>
