@@ -3,344 +3,270 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simple Chat</title>
+  <title>Discord Clone Chat - Fully Featured Enterprise Edition</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- Top Navigation Header -->
-  <header class="top-bar">
-    <div class="user-info">
-      <div id="top-left-profile" class="profile-preview hidden">
-        <img 
-          id="my-mini-avatar" 
-          src="avatar1.png" 
-          alt="User Avatar" 
-          class="mini-avatar" 
-        />
-        <span id="my-mini-username">Guest</span>
-      </div>
-      <span id="current-user-text" class="hidden">Guest</span>
-    </div>
+  <!-- BACKGROUND CANVAS & AUDIO ENGINE -->
+  <canvas id="bg-canvas"></canvas>
+  <audio id="bg-music" loop>
+    <source src="music.mp3" type="audio/mpeg">
+  </audio>
 
-    <div class="header-actions">
-      <button id="open-friends-btn" class="btn btn-secondary">
-        Friends
-      </button>
-      <button id="auth-modal-btn" class="btn btn-primary">
-        Sign In / Register
-      </button>
-      <button id="logout-btn" class="btn btn-danger hidden">
-        Logout
-      </button>
-    </div>
-  </header>
-
-  <!-- Main Application Container -->
-  <main class="chat-container">
-    
-    <!-- Messages Scroll Area -->
-    <div id="messages-container" class="messages-list"></div>
-
-    <!-- Live Typing Indicator -->
-    <div id="typing-indicator" class="typing-indicator hidden">
-      <span id="typing-text">Someone is typing...</span>
-    </div>
-
-    <!-- Global Chat Form Input -->
-    <form id="message-form" class="message-form">
-      <div class="input-wrapper">
-        <input 
-          type="text" 
-          id="message-input" 
-          placeholder="Sign in to chat..." 
-          autocomplete="off"
-          disabled 
-        />
-        <button 
-          type="button" 
-          id="emoji-btn" 
-          class="emoji-btn" 
-          disabled
-        >
-          😊
-        </button>
-        
-        <!-- Custom Emoji Picker Popup Window -->
-        <div id="discord-emoji-picker" class="emoji-picker hidden">
-          <div id="discord-emoji-grid" class="emoji-grid"></div>
+  <!-- MAIN APP CONTAINER WRAPPER -->
+  <div class="discord-app-wrapper">
+    <div class="discord-app">
+      
+      <!-- ==========================================================
+           1. FAR LEFT: SERVER & NAVIGATION SIDEBAR
+           ========================================================== -->
+      <nav class="server-sidebar" aria-label="Server Navigation">
+        <div class="server-icon discord-home-btn" title="Global Chat Channel">
+          <img src="discord.png" alt="Discord Logo" onerror="this.src='https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png'" />
         </div>
-      </div>
+        <div class="separator"></div>
+        <div class="server-icon action-icon" id="open-friends-btn" title="Friends Management & Requests">
+          <span aria-hidden="true">👥</span>
+        </div>
+        <div class="server-icon action-icon" id="server-settings-btn" title="Server Settings & Configuration">
+          <span aria-hidden="true">⚙️</span>
+        </div>
+      </nav>
 
-      <button 
-        type="submit" 
-        id="send-btn" 
-        class="btn btn-primary" 
-        disabled
-      >
-        Send
-      </button>
-    </form>
+      <!-- ==========================================================
+           2. MIDDLE: CHANNELS & DIRECT MESSAGES SIDEBAR
+           ========================================================== -->
+      <aside class="channel-sidebar" aria-label="Channels and Direct Messages">
+        <div class="sidebar-header">
+          <h2>Direct Messages</h2>
+          <button class="header-add-dm-btn" title="Create Direct Message">+</button>
+        </div>
+        <div class="sidebar-content" id="dm-friends-list" role="region" aria-label="Friends List">
+          <!-- Dynamic friend nodes load here via app.js -->
+        </div>
+        
+        <!-- CURRENT USER MINI PROFILE PANEL -->
+        <div class="current-user-panel" id="top-left-profile" title="Open User Profile Settings">
+          <img id="my-mini-avatar" src="avatar1.png" alt="User Avatar" class="mini-avatar" />
+          <div class="user-details">
+            <span id="current-user-text">Guest User</span>
+            <span class="status-text">Online Status</span>
+          </div>
+          <div class="user-panel-controls">
+            <button class="panel-control-btn" title="User Settings">⚙️</button>
+          </div>
+        </div>
+      </aside>
 
-  </main>
+      <!-- ==========================================================
+           3. RIGHT: MAIN CHAT & CONTROLS AREA
+           ========================================================== -->
+      <main class="chat-area" aria-label="Chat Area">
+        <!-- HEADER BAR -->
+        <header class="chat-header">
+          <div class="chat-title">
+            <span class="hash" aria-hidden="true">#</span>
+            <h3 id="active-chat-name">Global Chat</h3>
+            <span class="chat-topic-separator">|</span>
+            <span class="chat-topic-description">Welcome to the universal public chat network. Keep it civil!</span>
+          </div>
+          
+          <!-- TOP-RIGHT CONTROLS -->
+          <div class="header-controls">
+            <button id="theme-toggle-btn" class="icon-btn" title="Toggle Light/Dark Theme Mode">🌙</button>
+            <button id="music-toggle-btn" class="icon-btn" title="Mute/Unmute Ambient Music">🔇</button>
+            <button id="search-toggle-btn" class="icon-btn" title="Search Messages">🔍</button>
+            <button id="auth-modal-btn" class="btn btn-primary">Sign In</button>
+          </div>
+        </header>
 
-  <!-- Login / Registration Overlay Modal -->
-  <div id="auth-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-modal-btn" class="close-btn">&times;</button>
+        <!-- SEARCH BAR CONTAINER (HIDDEN BY DEFAULT) -->
+        <div id="search-bar-container" class="search-bar-container hidden">
+          <input type="text" id="message-search-input" placeholder="Search current chat messages..." />
+          <button id="close-search-btn" class="close-search-btn">&times;</button>
+        </div>
+
+        <!-- MESSAGES DISPLAY VIEW -->
+        <div id="messages-container" class="messages-list" role="log" aria-live="polite">
+          <div class="empty-state">Loading chat history...</div>
+        </div>
+
+        <!-- TYPING INDICATOR -->
+        <div id="typing-indicator" class="typing-indicator hidden" aria-hidden="true">
+          <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+          <span id="typing-text">Someone is typing a message...</span>
+        </div>
+
+        <!-- CHAT INPUT FORM & EMOJI DRAWER -->
+        <div class="chat-input-wrapper">
+          <div class="input-inner">
+            <form id="message-form" class="message-form" autocomplete="off">
+              <button type="button" id="attachment-btn" class="attachment-btn" title="Upload Media Attachment" disabled>+</button>
+              <input type="text" id="message-input" placeholder="Sign in to chat..." autocomplete="off" disabled />
+              <button type="button" id="gift-btn" class="gift-btn" title="Send Nitro Gift" disabled>🎁</button>
+              <button type="button" id="gif-btn" class="gif-btn" title="GIF Picker" disabled>GIF</button>
+              <button type="button" id="emoji-btn" class="emoji-btn" title="Open Emoji Drawer" disabled>😊</button>
+            </form>
+          </div>
+          
+          <!-- DISCORD STYLE EMOJI POPUP DRAWER -->
+          <div id="discord-emoji-picker" class="emoji-picker hidden" role="dialog" aria-label="Emoji Selector">
+            <div class="emoji-picker-header">
+              <span>Available Emojis & Media</span>
+            </div>
+            <div id="discord-emoji-grid" class="emoji-grid"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================================
+       MODALS & OVERLAYS SYSTEM (COMPREHENSIVE SUITE)
+       ========================================================== -->
+
+  <!-- Authentication Modal (Login / Register) -->
+  <div id="auth-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card auth-card">
+      <button id="close-modal-btn" class="close-btn" aria-label="Close Authentication Modal">&times;</button>
+      <h2>Welcome Back!</h2>
+      <p class="sub-text">We're so excited to see you again on the platform!</p>
       
       <div class="tab-headers">
-        <button id="tab-login" class="tab-btn active">
-          Login
-        </button>
-        <button id="tab-register" class="tab-btn">
-          Register
-        </button>
+        <button id="tab-login" class="tab-btn active">Login</button>
+        <button id="tab-register" class="tab-btn">Register</button>
       </div>
 
-      <p id="auth-error" class="error-msg"></p>
+      <div id="auth-error" class="error-msg" role="alert"></div>
 
       <!-- Login Form -->
-      <form id="login-form" class="auth-form">
+      <form id="login-form" class="form-content">
         <div class="form-group">
           <label for="login-username">Username</label>
-          <input 
-            type="text" 
-            id="login-username" 
-            placeholder="Enter username" 
-            required 
-          />
+          <input type="text" id="login-username" required autocomplete="username" />
         </div>
-
         <div class="form-group">
           <label for="login-password">Password</label>
-          <input 
-            type="password" 
-            id="login-password" 
-            placeholder="Enter password" 
-            required 
-          />
+          <input type="password" id="login-password" required autocomplete="current-password" />
         </div>
-
-        <button type="submit" class="btn btn-primary full-width">
-          Login
-        </button>
+        <button type="submit" class="btn btn-primary full-width">Login</button>
       </form>
 
-      <!-- Registration Form -->
-      <form id="register-form" class="auth-form hidden">
+      <!-- Register Form -->
+      <form id="register-form" class="form-content hidden">
         <div class="form-group">
           <label for="register-username">Username</label>
-          <input 
-            type="text" 
-            id="register-username" 
-            placeholder="Choose username" 
-            required 
-          />
+          <input type="text" id="register-username" required autocomplete="username" />
         </div>
-
         <div class="form-group">
           <label for="register-password">Password</label>
-          <input 
-            type="password" 
-            id="register-password" 
-            placeholder="Choose password" 
-            required 
-          />
+          <input type="password" id="register-password" required autocomplete="new-password" />
         </div>
-
-        <button type="submit" class="btn btn-primary full-width">
-          Register
-        </button>
+        <button type="submit" class="btn btn-primary full-width">Register Account</button>
       </form>
     </div>
   </div>
 
-  <!-- User Profile Edit Overlay -->
-  <div id="profile-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-profile-modal" class="close-btn">&times;</button>
-      <h2>My Profile Settings</h2>
-
+  <!-- Profile Edit Modal -->
+  <div id="profile-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card profile-card">
+      <button id="close-profile-modal" class="close-btn" aria-label="Close Profile Modal">&times;</button>
+      <h2>User Account Profile</h2>
       <div class="profile-header-edit">
-        <img 
-          id="edit-modal-avatar" 
-          src="avatar1.png" 
-          alt="Current Avatar" 
-          class="large-avatar" 
-        />
-        <button id="open-avatar-selector" class="btn btn-secondary">
-          Change Avatar
-        </button>
-      </div>
-
-      <h3 id="profile-display-username">Username</h3>
-
-      <div class="bio-section">
-        <label for="bio-input">About Me (Bio):</label>
-        <textarea 
-          id="bio-input" 
-          maxlength="150" 
-          placeholder="Write something about yourself..."
-        ></textarea>
-        
-        <div class="bio-footer">
-          <span id="bio-char-count">150 characters left</span>
-          <button id="save-bio-btn" class="btn btn-primary">
-            Save Bio
-          </button>
+        <img id="edit-modal-avatar" src="avatar1.png" alt="Current Avatar Preview" class="large-avatar" />
+        <div>
+          <h3 id="profile-display-username">Username Placeholder</h3>
+          <button id="open-avatar-selector" class="btn btn-secondary">Change Avatar</button>
         </div>
       </div>
+      
+      <div class="form-group bio-section">
+        <label for="bio-input">About Me / User Bio</label>
+        <textarea id="bio-input" maxlength="150" placeholder="Tell everyone a bit about yourself..."></textarea>
+        <div class="bio-footer">
+          <span id="bio-char-count">150 characters remaining</span>
+        </div>
+      </div>
+      <button id="save-bio-btn" class="btn btn-primary full-width">Save Profile Modifications</button>
     </div>
   </div>
 
-  <!-- Avatar Selector Window Overlay -->
-  <div id="avatar-selector-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-avatar-selector" class="close-btn">&times;</button>
-      <h3>Select Profile Avatar</h3>
-      <p class="sub-text">Choose an avatar image from the options below:</p>
-      
+  <!-- Avatar Selector Modal -->
+  <div id="avatar-selector-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card avatar-selector-card">
+      <button id="close-avatar-selector" class="close-btn" aria-label="Close Avatar Selector">&times;</button>
+      <h2>Choose Preset Avatar</h2>
+      <p class="sub-text">Select an official preset avatar graphic for your profile.</p>
       <div class="avatar-grid">
-        <img 
-          src="avatar1.png" 
-          class="preset-avatar" 
-          data-avatar="avatar1.png" 
-          alt="Avatar Preset 1" 
-        />
-        <img 
-          src="avatar2.png" 
-          class="preset-avatar" 
-          data-avatar="avatar2.png" 
-          alt="Avatar Preset 2" 
-        />
-        <img 
-          src="avatar3.png" 
-          class="preset-avatar" 
-          data-avatar="avatar3.png" 
-          alt="Avatar Preset 3" 
-        />
-        <img 
-          src="avatar4.png" 
-          class="preset-avatar" 
-          data-avatar="avatar4.png" 
-          alt="Avatar Preset 4" 
-        />
-        <img 
-          src="avatar5.png" 
-          class="preset-avatar" 
-          data-avatar="avatar5.png" 
-          alt="Avatar Preset 5" 
-        />
+        <img src="avatar1.png" class="preset-avatar" data-avatar="avatar1.png" alt="Avatar Option 1" />
+        <img src="avatar2.png" class="preset-avatar" data-avatar="avatar2.png" alt="Avatar Option 2" />
+        <img src="avatar3.png" class="preset-avatar" data-avatar="avatar3.png" alt="Avatar Option 3" />
+        <img src="avatar4.png" class="preset-avatar" data-avatar="avatar4.png" alt="Avatar Option 4" />
+        <img src="avatar5.png" class="preset-avatar" data-avatar="avatar5.png" alt="Avatar Option 5" />
       </div>
     </div>
   </div>
 
   <!-- View Other User Profile Modal -->
-  <div id="view-profile-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-view-profile" class="close-btn">&times;</button>
-      
+  <div id="view-profile-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card view-profile-card">
+      <button id="close-view-profile" class="close-btn" aria-label="Close User Profile Modal">&times;</button>
       <div class="profile-header-edit">
-        <img 
-          id="view-user-avatar" 
-          src="avatar1.png" 
-          class="large-avatar" 
-          alt="User Profile Image" 
-        />
+        <img id="view-user-avatar" src="avatar1.png" alt="Target User Avatar" class="large-avatar" />
+        <div>
+          <h3 id="view-user-name">Target Username</h3>
+          <span class="user-card-tag">Community Member</span>
+        </div>
       </div>
-
-      <h2 id="view-user-name">Username</h2>
-      <p id="view-user-bio" class="bio-display">No bio available.</p>
-      
-      <div class="profile-actions">
-        <button id="add-friend-btn" class="btn btn-primary full-width">
-          Add Friend
-        </button>
+      <div class="form-group">
+        <label>User Biography</label>
+        <div id="view-user-bio" class="bio-display">Loading biography details...</div>
       </div>
+      <button id="add-friend-btn" class="btn btn-primary full-width">Add Friend</button>
     </div>
   </div>
 
-  <!-- Friends List & Requests Modal -->
-  <div id="friends-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-friends-modal" class="close-btn">&times;</button>
+  <!-- Friends Manager Modal -->
+  <div id="friends-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card friends-card">
+      <button id="close-friends-modal" class="close-btn" aria-label="Close Friends Modal">&times;</button>
+      <h2>Friends & Platform Requests</h2>
       
       <div class="tab-headers">
-        <button id="tab-friends-list" class="tab-btn active">
-          Friends
-        </button>
-        <button id="tab-add-friend" class="tab-btn">
-          Add Friend
-        </button>
-        <button id="tab-requests" class="tab-btn">
-          Requests
-        </button>
+        <button id="tab-friends-list" class="tab-btn active">My Friends</button>
+        <button id="tab-add-friend" class="tab-btn">Add Friend</button>
+        <button id="tab-requests" class="tab-btn">Pending Requests</button>
       </div>
 
-      <!-- Friends List Tab -->
       <div id="section-friends-list" class="tab-section">
         <div id="friends-container" class="friends-list"></div>
       </div>
 
-      <!-- Add Friend Tab -->
       <div id="section-add-friend" class="tab-section hidden">
+        <p class="sub-text">You can add friends directly using their precise platform username.</p>
         <div class="add-friend-box">
-          <input 
-            type="text" 
-            id="friend-username-input" 
-            placeholder="Enter friend's username..." 
-          />
-          <button id="send-friend-req-btn" class="btn btn-primary">
-            Send Request
-          </button>
+          <input type="text" id="friend-username-input" placeholder="Enter username here..." />
+          <button id="send-friend-req-btn" class="btn btn-primary">Send Friend Request</button>
         </div>
-        <p id="friend-req-status" class="status-msg"></p>
+        <div id="friend-req-status" class="status-msg" role="status"></div>
       </div>
 
-      <!-- Pending Requests Tab -->
       <div id="section-requests" class="tab-section hidden">
         <div id="incoming-requests-container" class="friends-list"></div>
       </div>
     </div>
   </div>
 
-  <!-- Direct Messages Window Overlay -->
-  <div id="dm-overlay" class="modal-overlay hidden">
-    <div class="modal-card dm-card">
-      <button id="close-dm-modal" class="close-btn">&times;</button>
-      
-      <h3 id="dm-target-username">Direct Message</h3>
-      
-      <div id="dm-messages-container" class="messages-list dm-messages-list"></div>
-      
-      <form id="dm-form" class="message-form">
-        <input 
-          type="text" 
-          id="dm-input" 
-          placeholder="Type a message..." 
-          autocomplete="off" 
-          required 
-        />
-        <button type="submit" class="btn btn-primary">
-          Send
-        </button>
-      </form>
+  <!-- Account Ban Notice Modal -->
+  <div id="ban-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card ban-card">
+      <h2>Account Restricted</h2>
+      <p class="sub-text">Your user account has been suspended due to violations of community safety guidelines or profanity policy.</p>
+      <button id="dismiss-ban-btn" class="btn btn-danger full-width">Understood & Logout</button>
     </div>
   </div>
 
-  <!-- Account Ban Notification Modal -->
-  <div id="ban-overlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h2>Account Banned</h2>
-      <p>Your account has been restricted from participating in the chat.</p>
-      <button id="dismiss-ban-btn" class="btn btn-danger">
-        Dismiss
-      </button>
-    </div>
-  </div>
-
-  <!-- Main JavaScript File -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
