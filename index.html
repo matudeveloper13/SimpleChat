@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>SimpleChat</title>
-    <link rel="stylesheet" href="style.css?v=perfect2" />
+    <link rel="stylesheet" href="style.css?v=fixavatar3" />
 </head>
 <body class="dark-mode">
 
@@ -26,9 +26,9 @@
     <header class="header">
         <div class="logo-group">
             <div id="top-left-profile" class="top-left-profile" title="Click to view/edit profile & bio">
-                <div id="my-mini-avatar" class="profile-circle emoji-avatar">😀</div>
+                <img id="my-mini-avatar" class="profile-circle" src="avatar1.png" alt="Avatar" />
                 <div class="brand-title-group">
-                    <h1 id="my-mini-username">matutbanana2</h1>
+                    <h1 id="my-mini-username">yanabanaya</h1>
                 </div>
             </div>
         </div>
@@ -53,7 +53,7 @@
         <!-- Message Feed -->
         <div id="messages-container" class="messages-box">
             <div class="msg received">
-                <div class="msg-avatar-img emoji-avatar">🤖</div>
+                <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
                         <span class="msg-author">System</span>
@@ -70,7 +70,7 @@
         <div class="input-section">
             <form id="message-form" class="message-form">
                 <div style="position: relative;">
-                    <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Keyboard">😀</button>
+                    <button type="button" id="emoji-btn" class="btn-emoji" title="Open Media & Emoji Panel">😀</button>
                     <!-- Emoji & GIF Popup Picker -->
                     <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
                         <div class="discord-emoji-scroll-area" id="discord-emoji-grid"></div>
@@ -122,7 +122,7 @@
         <form id="register-form" class="auth-form">
             <div class="input-group">
                 <label>Username</label>
-                <input type="text" id="register-username" placeholder="e.g. matutbanana2" required />
+                <input type="text" id="register-username" placeholder="e.g. yanabanaya" required />
             </div>
             <div class="input-group">
                 <label>Password</label>
@@ -133,7 +133,7 @@
         <form id="login-form" class="auth-form hidden">
             <div class="input-group">
                 <label>Username</label>
-                <input type="text" id="login-username" placeholder="e.g. matutbanana2" required />
+                <input type="text" id="login-username" placeholder="e.g. yanabanaya" required />
             </div>
             <div class="input-group">
                 <label>Password</label>
@@ -152,7 +152,7 @@
         <h2>My Profile</h2>
         <div class="profile-edit-container" style="margin: 15px 0;">
             <div class="avatar-wrapper" id="open-avatar-selector" style="display: inline-block; cursor: pointer;">
-                <div id="edit-modal-avatar" class="profile-circle large-avatar emoji-avatar">😀</div>
+                <img id="edit-modal-avatar" class="profile-circle large-avatar" src="avatar1.png" alt="Avatar" />
             </div>
             <p style="margin-top: 10px; font-weight: 600;"><span id="profile-display-username"></span></p>
         </div>
@@ -169,13 +169,13 @@
 <!-- Avatar Selector Modal -->
 <div id="avatar-selector-overlay" class="overlay hidden">
     <div class="modal">
-        <h2>Choose an Emoji Avatar</h2>
+        <h2>Choose Your Avatar</h2>
         <div class="avatar-grid">
-            <div class="preset-avatar emoji-avatar" data-avatar="😀">😀</div>
-            <div class="preset-avatar emoji-avatar" data-avatar="😎">😎</div>
-            <div class="preset-avatar emoji-avatar" data-avatar="🚀">🚀</div>
-            <div class="preset-avatar emoji-avatar" data-avatar="🦊">🦊</div>
-            <div class="preset-avatar emoji-avatar" data-avatar="🤖">🤖</div>
+            <img class="preset-avatar" src="avatar1.png" data-avatar="avatar1.png" alt="avatar1" />
+            <img class="preset-avatar" src="avatar2.png" data-avatar="avatar2.png" alt="avatar2" />
+            <img class="preset-avatar" src="avatar3.png" data-avatar="avatar3.png" alt="avatar3" />
+            <img class="preset-avatar" src="avatar4.png" data-avatar="avatar4.png" alt="avatar4" />
+            <img class="preset-avatar" src="avatar5.png" data-avatar="avatar5.png" alt="avatar5" />
         </div>
         <button id="close-avatar-selector" class="btn btn-secondary full-width mt-20">Back</button>
     </div>
@@ -185,7 +185,7 @@
 <div id="view-profile-overlay" class="overlay hidden">
     <div class="modal profile-modal">
         <div class="profile-edit-container" style="margin: 15px 0;">
-            <div id="view-user-avatar" class="profile-circle large-avatar emoji-avatar">😀</div>
+            <img id="view-user-avatar" class="profile-circle large-avatar" src="avatar1.png" alt="Avatar" />
             <h2 id="view-user-name" style="margin-top: 10px;">Username</h2>
         </div>
         <div class="bio-display-section" style="text-align: left; margin: 15px 0;">

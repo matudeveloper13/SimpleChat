@@ -102,33 +102,27 @@ body {
 .top-left-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 10px; border-radius: var(--radius-lg); transition: background 0.15s ease; }
 .top-left-profile:hover { background: var(--border-color); }
 
-/* Round Emoji Avatars */
-.emoji-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  user-select: none;
-}
-.profile-circle.emoji-avatar {
+/* Small Round Image Avatars */
+.profile-circle {
   width: 34px;
   height: 34px;
-  font-size: 18px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 1px solid var(--border-color);
   flex-shrink: 0;
 }
-.msg-avatar-img.emoji-avatar {
+.msg-avatar-img {
   width: 36px;
   height: 36px;
-  font-size: 20px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 1px solid var(--border-color);
   flex-shrink: 0;
   cursor: pointer;
 }
-.large-avatar.emoji-avatar {
+.large-avatar {
   width: 80px;
   height: 80px;
-  font-size: 40px;
   margin: 0 auto;
 }
 
@@ -175,29 +169,30 @@ body {
 .msg.received .msg-bubble { background: var(--bubble-received); color: var(--text-main); border: 1px solid var(--border-color); border-top-left-radius: 4px; }
 .msg.sent .msg-bubble { background: var(--bubble-sent); color: var(--bubble-sent-text); border-top-right-radius: 4px; }
 
-/* Tiny Emoji Picker Panel */
-.discord-emoji-picker {
-  position: absolute; bottom: 50px; left: 0; width: 260px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 10px; z-index: 50;
-}
-.discord-emoji-scroll-area {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 160px; overflow-y: auto; align-items: center; justify-items: center;
-}
-.discord-emoji-item {
-  font-size: 20px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;
-}
-.discord-picker-thumbnail {
-  width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer; background: #000;
-}
-.discord-emoji-item:hover, .discord-picker-thumbnail:hover { background: var(--border-color); transform: scale(1.1); }
-
-/* Sent Video/GIF Original Size */
-.inline-chat-video-original {
+/* Normal size for videos/GIFs in chat */
+.inline-chat-video-normal {
+  width: 200px;
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-sm);
   display: block;
   margin-top: 4px;
 }
+
+/* Emoji / Media Panel Picker */
+.discord-emoji-picker {
+  position: absolute; bottom: 50px; left: 0; width: 280px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 10px; z-index: 50;
+}
+.discord-emoji-scroll-area {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 200px; overflow-y: auto; align-items: center; justify-items: center;
+}
+.discord-picker-thumbnail {
+  width: 50px; height: 50px; object-fit: cover; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background: #000;
+}
+.discord-picker-avatar-thumb {
+  width: 45px; height: 45px; object-fit: cover; border-radius: var(--radius-full); cursor: pointer; border: 2px solid var(--border-color);
+}
+.discord-picker-thumbnail:hover, .discord-picker-avatar-thumb:hover { transform: scale(1.1); border-color: var(--primary); }
 
 .input-section { padding: 14px 20px; border-top: 1px solid var(--border-color); background: var(--card-bg); flex-shrink: 0; }
 .message-form { display: flex; align-items: center; gap: 12px; }
@@ -245,7 +240,7 @@ body {
 .input-group textarea { resize: vertical; min-height: 80px; }
 
 .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
-.preset-avatar { width: 50px; height: 50px; font-size: 24px; border-radius: var(--radius-full); cursor: pointer; border: 2px solid transparent; transition: transform 0.15s ease; }
+.preset-avatar { width: 50px; height: 50px; border-radius: var(--radius-full); object-fit: cover; cursor: pointer; border: 2px solid transparent; transition: transform 0.15s ease; }
 .preset-avatar:hover { border-color: var(--primary); transform: scale(1.1); }
 
 .hidden { display: none !important; }

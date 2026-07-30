@@ -71,7 +71,7 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
-let currentUsername = "matutbanana2";
+let currentUsername = "yanabanaya";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 
@@ -126,7 +126,7 @@ registerForm?.addEventListener("submit", async (e) => {
         await setDoc(doc(db, "users", username), {
             username,
             bio: "Hey there! I am using SimpleChat.",
-            avatar: "😀",
+            avatar: "avatar1.png",
             friends: [],
             friendRequests: []
         });
@@ -161,15 +161,15 @@ onAuthStateChanged(auth, async (user) => {
             await setDoc(userRef, {
                 username: currentUsername,
                 bio: "Hey there! I am using SimpleChat.",
-                avatar: "😀",
+                avatar: "avatar1.png",
                 friends: [],
                 friendRequests: []
             });
         } else {
             const data = snap.data();
             if (data.avatar) {
-                myMiniAvatar.textContent = data.avatar;
-                editModalAvatar.textContent = data.avatar;
+                myMiniAvatar.src = data.avatar;
+                editModalAvatar.src = data.avatar;
             }
             if (data.bio) bioInput.value = data.bio;
         }
@@ -197,8 +197,8 @@ closeAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.class
 document.querySelectorAll(".preset-avatar").forEach(el => {
     el.addEventListener("click", async (e) => {
         const selected = e.target.getAttribute("data-avatar");
-        myMiniAvatar.textContent = selected;
-        editModalAvatar.textContent = selected;
+        myMiniAvatar.src = selected;
+        editModalAvatar.src = selected;
         avatarSelectorOverlay.classList.add("hidden");
         if (currentUsername !== "Guest") {
             await updateDoc(doc(db, "users", currentUsername), { avatar: selected });
@@ -217,9 +217,9 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Emoji & GIF Setup (all 4 files included in picker)
-const popularEmojis = ["😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀", "🙏", "👌", "❤️", "😊"];
-const gifFiles = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "gif4.mp4"];
+// Setup 4 GIFs & 5 Avatars in Panel
+const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif.mp4"];
+const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
 
 gifFiles.forEach(gif => {
     const videoThumb = document.createElement("video");
@@ -230,23 +230,23 @@ gifFiles.forEach(gif => {
     videoThumb.loop = true;
     videoThumb.playsInline = true;
     videoThumb.addEventListener("click", () => {
-        messageInput.value += ` <video src="${gif}" class="inline-chat-video-original" autoplay loop muted playsinline></video> `;
+        messageInput.value += ` <video src="${gif}" class="inline-chat-video-normal" autoplay loop muted playsinline></video> `;
         messageInput.focus();
         discordEmojiPicker.classList.add("hidden");
     });
     discordEmojiGrid.appendChild(videoThumb);
 });
 
-popularEmojis.forEach(emoji => {
-    const span = document.createElement("span");
-    span.className = "discord-emoji-item";
-    span.textContent = emoji;
-    span.addEventListener("click", () => {
-        messageInput.value += emoji;
+avatarFiles.forEach(av => {
+    const imgThumb = document.createElement("img");
+    imgThumb.src = av;
+    imgThumb.className = "discord-picker-avatar-thumb";
+    imgThumb.addEventListener("click", () => {
+        messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /> `;
         messageInput.focus();
         discordEmojiPicker.classList.add("hidden");
     });
-    discordEmojiGrid.appendChild(span);
+    discordEmojiGrid.appendChild(imgThumb);
 });
 
 emojiBtn?.addEventListener("click", (e) => {
@@ -265,18 +265,24 @@ messageForm?.addEventListener("submit", async (e) => {
     const text = messageInput.value.trim();
     if (!text || currentUsername === "Guest") return;
 
-    let userAvatar = "😀";
+    let userAvatar = "avatar1.png";
     try {
         const snap = await getDoc(doc(db, "users", currentUsername));
         if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
     } catch(e){}
 
     messageInput.value = "";
+    
+    let targetRoom = currentChatRoom;
+    if (currentChatRoom !== "global") {
+        targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
+    }
+
     await addDoc(collection(db, "messages"), {
         text,
         username: currentUsername,
         avatar: userAvatar,
-        room: currentChatRoom,
+        room: targetRoom,
         timestamp: serverTimestamp()
     });
 });
@@ -286,31 +292,23 @@ onSnapshot(q, (snapshot) => {
     messagesContainer.innerHTML = "";
     snapshot.forEach(docSnap => {
         const msg = docSnap.data();
+        
         let matchesRoom = false;
         if (currentChatRoom === "global") {
             matchesRoom = !msg.room || msg.room === "global";
         } else {
-            matchesRoom = (msg.room === `dm_${currentUsername}_${currentChatRoom}`) || 
-                          (msg.room === `dm_${currentChatRoom}_${currentUsername}`) ||
-                          (msg.room === currentChatRoom && msg.username === currentUsername) ||
-                          (msg.room === currentUsername && msg.username === currentChatRoom);
+            const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
+            matchesRoom = msg.room === expectedDM;
         }
 
-        // Alternative DM room check matching both ways
-        if (currentChatRoom !== "global") {
-            const isTargetDM = (msg.room === currentChatRoom && msg.username === currentUsername) ||
-                               (msg.room === currentUsername && msg.username === currentChatRoom);
-            if (!isTargetDM && msg.room !== currentChatRoom) return;
-        } else {
-            if (msg.room && msg.room !== "global") return;
-        }
+        if (!matchesRoom) return;
 
         const isSent = msg.username === currentUsername;
         const div = document.createElement("div");
         div.className = `msg ${isSent ? 'sent' : 'received'}`;
         
         div.innerHTML = `
-            <div class="msg-avatar-img emoji-avatar">${msg.avatar || '😀'}</div>
+            <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
             <div class="msg-content">
                 <div class="msg-header">
                     <span class="msg-author">${msg.username}</span>
@@ -332,7 +330,7 @@ onSnapshot(q, (snapshot) => {
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
     viewUserName.textContent = username;
-    viewUserAvatar.textContent = "😀";
+    viewUserAvatar.src = "avatar1.png";
     viewUserBio.textContent = "Loading bio...";
     profileFriendActionBtn.textContent = "Send Friend Request";
     profileFriendActionBtn.disabled = false;
@@ -341,7 +339,7 @@ async function openUserProfileModal(username) {
         const userDoc = await getDoc(doc(db, "users", username));
         if (userDoc.exists()) {
             const data = userDoc.data();
-            if (data.avatar) viewUserAvatar.textContent = data.avatar;
+            if (data.avatar) viewUserAvatar.src = data.avatar;
             if (data.bio) viewUserBio.textContent = data.bio;
         }
 
