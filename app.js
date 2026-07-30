@@ -72,23 +72,22 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
 
-// Create DM Photo Upload button element dynamically so it only appears next to input
-const chatInputWrapper = messageForm ? messageForm.querySelector("div") || messageForm : null;
-const dmImageUploadBtn = document.createElement("label");
-dmImageUploadBtn.innerHTML = "📷";
-dmImageUploadBtn.title = "Send Photo (DMs only)";
-dmImageUploadBtn.id = "dm-image-upload-btn";
-dmImageUploadBtn.className = "hidden";
-dmImageUploadBtn.style.cssText = "cursor: pointer; font-size: 20px; padding: 0 8px; display: flex; align-items: center;";
+// --- CREATE GALLERY PHOTO UPLOAD BUTTON (DM ONLY) ---
+const dmPhotoUploadBtn = document.createElement("label");
+dmPhotoUploadBtn.innerHTML = "🖼️";
+dmPhotoUploadBtn.title = "Send Photo from Gallery (DMs Only)";
+dmPhotoUploadBtn.id = "dm-photo-upload-btn";
+dmPhotoUploadBtn.className = "hidden";
+dmPhotoUploadBtn.style.cssText = "cursor: pointer; font-size: 20px; padding: 0 8px; display: flex; align-items: center; user-select: none;";
 
-const dmImageFileInput = document.createElement("input");
-dmImageFileInput.type = "file";
-dmImageFileInput.accept = "image/*";
-dmImageFileInput.style.display = "none";
-dmImageUploadBtn.appendChild(dmImageFileInput);
+const dmPhotoFileInput = document.createElement("input");
+dmPhotoFileInput.type = "file";
+dmPhotoFileInput.accept = "image/*";
+dmPhotoFileInput.style.display = "none";
+dmPhotoUploadBtn.appendChild(dmPhotoFileInput);
 
 if (messageForm) {
-    messageForm.insertBefore(dmImageUploadBtn, messageInput);
+    messageForm.insertBefore(dmPhotoUploadBtn, messageInput);
 }
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
@@ -114,7 +113,6 @@ function formatMessageTime(timestamp) {
     
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     
@@ -150,7 +148,7 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
-    dmImageUploadBtn.classList.add("hidden");
+    dmPhotoUploadBtn.classList.add("hidden");
     loadMessagesFeed();
 });
 
@@ -272,22 +270,22 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// --- EMOJI & TENOR GIF PICKER SETUP ---
+// --- EMOJI & TENOR GIF DUAL PANEL SETUP ---
 if (discordEmojiPicker && !document.getElementById("picker-header-tabs")) {
     const pickerHeader = document.createElement("div");
     pickerHeader.id = "picker-header-tabs";
-    pickerHeader.style.cssText = "display: flex; border-bottom: 1px solid var(--border-color); padding: 5px; gap: 4px;";
+    pickerHeader.style.cssText = "display: flex; border-bottom: 1px solid var(--border-color); padding: 5px; gap: 4px; background: var(--card-bg);";
     pickerHeader.innerHTML = `
-        <button id="tab-emojis" type="button" class="btn btn-sm active" style="flex:1; font-size:11px;">😊 Emojis & Avatars</button>
-        <button id="tab-gifs" type="button" class="btn btn-sm" style="flex:1; font-size:11px;">🎬 GIFs</button>
+        <button id="tab-emojis" type="button" class="btn btn-sm active" style="flex:1; font-size:11px; cursor:pointer;">😊 Emojis & Avatars</button>
+        <button id="tab-gifs" type="button" class="btn btn-sm" style="flex:1; font-size:11px; cursor:pointer;">🎬 GIFs</button>
     `;
     discordEmojiPicker.insertBefore(pickerHeader, discordEmojiPicker.firstChild);
 
     const gifSearchDiv = document.createElement("div");
     gifSearchDiv.id = "gif-search-container";
     gifSearchDiv.className = "hidden";
-    gifSearchDiv.style.cssText = "padding: 6px;";
-    gifSearchDiv.innerHTML = `<input type="text" id="gif-search-input" placeholder="Search Tenor GIFs..." style="width: 100%; padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 12px;" />`;
+    gifSearchDiv.style.cssText = "padding: 6px; background: var(--card-bg);";
+    gifSearchDiv.innerHTML = `<input type="text" id="gif-search-input" placeholder="Search Tenor GIFs..." style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 12px; outline: none;" />`;
     discordEmojiPicker.insertBefore(gifSearchDiv, discordEmojiGrid);
 }
 
@@ -301,14 +299,15 @@ function renderEmojiAndAvatarTab() {
     discordEmojiGrid.innerHTML = "";
 
     const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
-    const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
+    const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉", "🚀", "✨", "🙌", "💯"];
 
     avatarFiles.forEach(av => {
         const imgThumb = document.createElement("img");
         imgThumb.src = av;
         imgThumb.className = "discord-picker-avatar-thumb";
+        imgThumb.style.cssText = "width: 36px; height: 36px; border-radius: 50%; object-fit: cover; cursor: pointer;";
         imgThumb.addEventListener("click", () => {
-            messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /> `;
+            messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;" /> `;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
         });
@@ -318,6 +317,7 @@ function renderEmojiAndAvatarTab() {
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
         emojiDiv.className = "discord-picker-emoji-thumb";
+        emojiDiv.style.cssText = "font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px;";
         emojiDiv.textContent = em;
         emojiDiv.addEventListener("click", () => {
             messageInput.value += em;
@@ -329,7 +329,7 @@ function renderEmojiAndAvatarTab() {
 }
 
 async function fetchTenorGifs(searchTerm = "trending") {
-    discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--text-muted);">Loading GIFs...</p>`;
+    discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--text-muted); padding: 10px;">Loading GIFs...</p>`;
     try {
         const endpoint = searchTerm === "trending" 
             ? `https://g.tenor.com/v1/trending?key=${TENOR_API_KEY}&limit=12`
@@ -339,23 +339,42 @@ async function fetchTenorGifs(searchTerm = "trending") {
         const data = await response.json();
         
         discordEmojiGrid.innerHTML = "";
+        if (!data.results || data.results.length === 0) {
+            discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--text-muted); padding: 10px;">No GIFs found</p>`;
+            return;
+        }
+
         data.results.forEach(result => {
             const gifUrl = result.media[0].tinygif.url;
             
             const imgThumb = document.createElement("img");
             imgThumb.src = gifUrl;
-            imgThumb.className = "discord-picker-avatar-thumb";
-            imgThumb.style.cssText = "width: 100%; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;";
+            imgThumb.style.cssText = "width: 100%; height: 65px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.1s;";
             
-            imgThumb.addEventListener("click", () => {
-                messageInput.value += ` <img src="${gifUrl}" style="max-width:200px;border-radius:8px;" /> `;
-                messageInput.focus();
+            imgThumb.addEventListener("click", async () => {
                 discordEmojiPicker.classList.add("hidden");
+                
+                // Instantly send GIF into current chat room
+                let userAvatar = "avatar1.png";
+                try {
+                    const snap = await getDoc(doc(db, "users", currentUsername));
+                    if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
+                } catch(e){}
+
+                const targetRoom = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+                
+                await addDoc(collection(db, "messages"), {
+                    text: `<img src="${gifUrl}" style="max-width:200px; border-radius:8px; display:block; margin-top:2px;" />`,
+                    username: currentUsername,
+                    avatar: userAvatar,
+                    room: targetRoom,
+                    timestamp: serverTimestamp()
+                });
             });
             discordEmojiGrid.appendChild(imgThumb);
         });
     } catch (err) {
-        discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--danger);">Failed to load GIFs</p>`;
+        discordEmojiGrid.innerHTML = `<p style="grid-column: span 4; text-align:center; font-size:12px; color:var(--danger); padding: 10px;">Failed to load GIFs</p>`;
     }
 }
 
@@ -394,8 +413,8 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// --- DM PHOTO UPLOAD HANDLER ---
-dmImageFileInput?.addEventListener("change", async (e) => {
+// --- DM GALLERY PHOTO UPLOAD LISTENER ---
+dmPhotoFileInput?.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file || currentUsername === "Guest" || currentChatRoom === "global") return;
 
@@ -419,7 +438,7 @@ dmImageFileInput?.addEventListener("change", async (e) => {
         });
     };
     reader.readAsDataURL(file);
-    dmImageFileInput.value = "";
+    dmPhotoFileInput.value = "";
 });
 
 messageInput?.addEventListener("input", async () => {
@@ -671,7 +690,7 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
-    dmImageUploadBtn.classList.remove("hidden"); // Show photo button ONLY in DMs
+    dmPhotoUploadBtn.classList.remove("hidden"); // Reveal camera photo upload button ONLY in DMs
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
