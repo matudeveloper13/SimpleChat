@@ -1,543 +1,443 @@
-/**
- * ==========================================================================
- * SimpleChat Enterprise Production JavaScript Application Engine
- * Expanded Architecture - Comprehensive Feature Set & Event Controllers
- * Target Line Count: ~900+ lines of robust, modular code
- * ==========================================================================
- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-'use strict';
+const firebaseConfig = {
+  apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
+  authDomain: "simplechat-e1787.firebaseapp.com",
+  projectId: "simplechat-e1787",
+  storageBucket: "simplechat-e1787.firebasestorage.app",
+  messagingSenderId: "469168057769",
+  appId: "1:469168057769:web:d7f37ceae7b6d8227c28b8",
+  measurementId: "G-KDWQTRWZSQ"
+};
 
-const SimpleChatApp = (function() {
-    
-    // Application Core State Management
-    const state = {
-        currentUser: {
-            username: 'matutbanana2',
-            tag: '#0001',
-            avatar: 'icon.png',
-            status: 'online',
-            userId: 'usr-local-root',
-            role: 'Enterprise Administrator',
-            joinedDate: 'January 2026'
-        },
-        settings: {
-            starDensity: 'medium',
-            soundEffects: true,
-            audioVolume: 70,
-            theme: 'dark-theme',
-            notificationsEnabled: true,
-            autoScroll: true,
-            encryptionLevel: 'AES-256-GCM'
-        },
-        activeView: 'global-chat',
-        isDMsOpen: false,
-        activeModal: null,
-        audioPlaying: false,
-        activeChannel: 'global-chat-main',
-        friendsList: [
-            { id: 'usr-101', name: 'User One', status: 'online', activity: 'Playing SimpleChat Studio', avatar: 'icon.png' },
-            { id: 'usr-102', name: 'User Two', status: 'idle', activity: 'Away from keyboard', avatar: 'icon.png' },
-            { id: 'usr-103', name: 'User Three', status: 'online', activity: 'Coding something awesome', avatar: 'icon.png' },
-            { id: 'usr-104', name: 'User Four', status: 'offline', activity: 'Offline 3h ago', avatar: 'icon.png' }
-        ],
-        messages: [
-            {
-                id: 'msg-001',
-                author: 'matutbanana2',
-                avatar: 'icon.png',
-                timestamp: '10:15 PM',
-                text: 'Yo! Welcome to the revamped SimpleChat UI. This is fully custom built without any template boilerplate.',
-                reactions: {}
-            },
-            {
-                id: 'msg-002',
-                author: 'matutbanana2',
-                avatar: 'icon.png',
-                timestamp: '4:30 PM',
-                text: 'Check out this live asset render:',
-                image: 'https://images.unsplash.com/photo-1534361960057-19889db9621e?w=400',
-                reactions: {}
-            },
-            {
-                id: 'msg-003',
-                author: 'yeinobanaya',
-                avatar: 'icon.png',
-                timestamp: '9:56 PM',
-                text: 'Dude, this new layout matches the mockup screenshot precisely! Amazing work.',
-                reactions: { '😡': 1 }
-            }
-        ]
-    };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    // Comprehensive DOM Element Reference Cache Repository
-    let DOM = {};
+// DOM Elements
+const authModalBtn = document.getElementById("auth-modal-btn");
+const logoutBtn = document.getElementById("logout-btn");
+const currentUserText = document.getElementById("current-user-text");
+const authOverlay = document.getElementById("auth-overlay");
+const closeModalBtn = document.getElementById("close-modal-btn");
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+const authError = document.getElementById("auth-error");
+const tabRegister = document.getElementById("tab-register");
+const tabLogin = document.getElementById("tab-login");
 
-    function cacheDOMReferences() {
-        DOM.starCanvas = document.getElementById('starCanvas');
-        DOM.constellationCanvas = document.getElementById('particleConstellationCanvas');
-        DOM.appRootContainer = document.getElementById('app-root-container');
-        DOM.applicationHeader = document.getElementById('application-header');
-        DOM.userProfileBadge = document.getElementById('userProfileBadge');
-        DOM.navUsernameDisplay = document.getElementById('navUsernameDisplay');
-        DOM.networkStatusPill = document.getElementById('networkStatusPill');
-        DOM.globalSearchTriggerBtn = document.getElementById('globalSearchTriggerBtn');
-        DOM.audioEngineToggleBtn = document.getElementById('audioEngineToggleBtn');
-        DOM.discordInviteLinkBtn = document.getElementById('discordInviteLinkBtn');
-        DOM.musicPlayerHeaderBtn = document.getElementById('musicPlayerHeaderBtn');
-        DOM.sessionLogoutBtn = document.getElementById('sessionLogoutBtn');
-        DOM.centralWorkspaceFrame = document.getElementById('centralWorkspaceFrame');
-        DOM.frameWindowTitlebar = document.getElementById('frameWindowTitlebar');
-        DOM.titlebarAppLogo = document.getElementById('titlebarAppLogo');
-        DOM.titlebarAppTitleText = document.getElementById('titlebarAppTitleText');
-        DOM.frameContentViewport = document.getElementById('frameContentViewport');
-        DOM.globalChatFeedSection = document.getElementById('globalChatFeedSection');
-        DOM.chatMessagesContainer = document.getElementById('chatMessagesContainer');
-        DOM.systemWelcomeBanner = document.getElementById('systemWelcomeBanner');
-        DOM.typingIndicatorBar = document.getElementById('typingIndicatorBar');
-        DOM.chatInputSubmissionArea = document.getElementById('chatInputSubmissionArea');
-        DOM.messageComposerForm = document.getElementById('messageComposerForm');
-        DOM.attachFileBtn = document.getElementById('attachFileBtn');
-        DOM.emojiPickerToggleBtn = document.getElementById('emojiPickerToggleBtn');
-        DOM.messageInputTextField = document.getElementById('messageInputTextField');
-        DOM.messageSendActionBtn = document.getElementById('messageSendActionBtn');
-        DOM.friendsOverlayPanel = document.getElementById('friendsOverlayPanel');
-        DOM.openDMsOverlayBtn = document.getElementById('openDMsOverlayBtn');
-        DOM.closeDMsOverlayBtn = document.getElementById('closeDMsOverlayBtn');
-        DOM.friendsSearchInput = document.getElementById('friendsSearchInput');
-        DOM.overlayFriendsListContainer = document.getElementById('overlayFriendsListContainer');
-        DOM.modalContainerRoot = document.getElementById('modalContainerRoot');
-        DOM.musicPlayerModalDialog = document.getElementById('musicPlayerModalDialog');
-        DOM.settingsModalDialog = document.getElementById('settingsModalDialog');
-        DOM.closeMusicModalBtn = document.getElementById('closeMusicModalBtn');
-        DOM.closeSettingsModalBtn = document.getElementById('closeSettingsModalBtn');
-        DOM.audioPlayPauseBtn = document.getElementById('audioPlayPauseBtn');
-        DOM.audioVolumeSlider = document.getElementById('audioVolumeSlider');
-        DOM.starDensitySelect = document.getElementById('starDensitySelect');
-        DOM.soundEffectsToggle = document.getElementById('soundEffectsToggle');
-        DOM.triggerGlobalChatPanel = document.getElementById('triggerGlobalChatPanel');
-        DOM.openFavoritesPanelBtn = document.getElementById('openFavoritesPanelBtn');
-        DOM.openSettingsPanelBtn = document.getElementById('openSettingsPanelBtn');
+const messageForm = document.getElementById("message-form");
+const messageInput = document.getElementById("message-input");
+const messagesContainer = document.getElementById("messages-container");
+
+const navFriendsBtn = document.getElementById("nav-friends-btn");
+const backToChatBtn = document.getElementById("back-to-chat-btn");
+const globalChatSection = document.getElementById("global-chat-section");
+const friendsSection = document.getElementById("friends-section");
+
+const addFriendInput = document.getElementById("add-friend-input");
+const sendFriendRequestBtn = document.getElementById("send-friend-request-btn");
+const friendActionMsg = document.getElementById("friend-action-msg");
+const pendingRequestsContainer = document.getElementById("pending-requests-container");
+const friendsListContainer = document.getElementById("friends-list-container");
+
+const topLeftProfile = document.getElementById("top-left-profile");
+const profileOverlay = document.getElementById("profile-overlay");
+const closeProfileModal = document.getElementById("close-profile-modal");
+const myMiniAvatar = document.getElementById("my-mini-avatar");
+const myMiniUsername = document.getElementById("my-mini-username");
+const editModalAvatar = document.getElementById("edit-modal-avatar");
+const profileDisplayUsername = document.getElementById("profile-display-username");
+const openAvatarSelector = document.getElementById("open-avatar-selector");
+const avatarSelectorOverlay = document.getElementById("avatar-selector-overlay");
+const closeAvatarSelector = document.getElementById("close-avatar-selector");
+const bioInput = document.getElementById("bio-input");
+const saveBioBtn = document.getElementById("save-bio-btn");
+const bioCharCount = document.getElementById("bio-char-count");
+
+const viewProfileOverlay = document.getElementById("view-profile-overlay");
+const closeViewProfile = document.getElementById("close-view-profile");
+const viewUserAvatar = document.getElementById("view-user-avatar");
+const viewUserName = document.getElementById("view-user-name");
+const viewUserBio = document.getElementById("view-user-bio");
+const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
+
+const emojiBtn = document.getElementById("emoji-btn");
+const discordEmojiPicker = document.getElementById("discord-emoji-picker");
+const discordEmojiGrid = document.getElementById("discord-emoji-grid");
+const emojiSearchInput = document.getElementById("emoji-search-input");
+
+const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
+const makeSecurePass = (pass) => `sc_${pass}_pad123`;
+
+let currentUsername = "matutbanana2";
+let viewingProfileUsername = null;
+
+// View toggles
+navFriendsBtn?.addEventListener("click", () => {
+    globalChatSection.classList.add("hidden");
+    friendsSection.classList.remove("hidden");
+    loadFriendsAndRequests();
+});
+
+backToChatBtn?.addEventListener("click", () => {
+    friendsSection.classList.add("hidden");
+    globalChatSection.classList.remove("hidden");
+});
+
+// Auth tabs
+tabRegister?.addEventListener("click", () => {
+    tabRegister.className = "tab-btn active";
+    tabLogin.className = "tab-btn";
+    registerForm.classList.remove("hidden");
+    loginForm.classList.add("hidden");
+});
+
+tabLogin?.addEventListener("click", () => {
+    tabLogin.className = "tab-btn active";
+    tabRegister.className = "tab-btn";
+    loginForm.classList.remove("hidden");
+    registerForm.classList.add("hidden");
+});
+
+authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidden"));
+closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
+logoutBtn?.addEventListener("click", () => signOut(auth));
+
+registerForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("register-username").value.trim();
+    const password = document.getElementById("register-password").value;
+    try {
+        await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+        await setDoc(doc(db, "users", username), {
+            username,
+            bio: "Hey there! I am using SimpleChat.",
+            avatar: "avatar1.png",
+            friends: [],
+            friendRequests: []
+        }, { merge: true });
+        authOverlay.classList.add("hidden");
+    } catch (err) {
+        authError.textContent = err.message;
     }
+});
 
-    // ==========================================================================
-    // Advanced Starfield Animation & Particle Engine
-    // ==========================================================================
-    let starCtx, constellationCtx;
-    let starsArray = [];
-    let animationFrameId = null;
-
-    function initStarfieldEngine() {
-        if (!DOM.starCanvas) return;
-        starCtx = DOM.starCanvas.getContext('2d');
-        constellationCtx = DOM.constellationCanvas ? DOM.constellationCanvas.getContext('2d') : null;
-
-        resizeCanvases();
-        window.addEventListener('resize', resizeCanvases);
-
-        generateStarParticles();
-        runAnimationLoop();
+loginForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value;
+    try {
+        await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+        authOverlay.classList.add("hidden");
+    } catch (err) {
+        authError.textContent = "Invalid credentials.";
     }
+});
 
-    function resizeCanvases() {
-        if (!DOM.starCanvas) return;
-        DOM.starCanvas.width = window.innerWidth;
-        DOM.starCanvas.height = window.innerHeight;
-        if (DOM.constellationCanvas) {
-            DOM.constellationCanvas.width = window.innerWidth;
-            DOM.constellationCanvas.height = window.innerHeight;
-        }
-    }
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUsername = user.email.split("@")[0];
+        currentUserText.textContent = currentUsername;
+        myMiniUsername.textContent = currentUsername;
+        authModalBtn.classList.add("hidden");
+        logoutBtn.classList.remove("hidden");
 
-    function generateStarParticles() {
-        starsArray = [];
-        let count = 60;
-        if (state.settings.starDensity === 'low') count = 30;
-        if (state.settings.starDensity === 'high') count = 120;
-
-        for (let i = 0; i < count; i++) {
-            starsArray.push({
-                x: Math.random() * DOM.starCanvas.width,
-                y: Math.random() * DOM.starCanvas.height,
-                radius: Math.random() * 1.6 + 0.4,
-                speed: Math.random() * 0.4 + 0.1,
-                alpha: Math.random() * 0.8 + 0.2,
-                pulseSpeed: Math.random() * 0.02 + 0.005
+        const userRef = doc(db, "users", currentUsername);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+            await setDoc(userRef, {
+                username: currentUsername,
+                bio: "Hey there! I am using SimpleChat.",
+                avatar: "avatar1.png",
+                friends: [],
+                friendRequests: []
             });
-        }
-    }
-
-    function runAnimationLoop() {
-        if (!starCtx) return;
-        starCtx.clearRect(0, 0, DOM.starCanvas.width, DOM.starCanvas.height);
-        starCtx.fillStyle = '#ffffff';
-
-        starsArray.forEach(star => {
-            star.alpha += Math.sin(Date.now() * star.pulseSpeed) * 0.005;
-            star.alpha = Math.max(0.1, Math.min(1, star.alpha));
-
-            starCtx.globalAlpha = star.alpha;
-            starCtx.beginPath();
-            starCtx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-            starCtx.fill();
-
-            // Downward falling motion simulation
-            star.y += star.speed;
-            if (star.y > DOM.starCanvas.height) {
-                star.y = 0;
-                star.x = Math.random() * DOM.starCanvas.width;
+        } else {
+            const data = snap.data();
+            if (data.avatar) {
+                myMiniAvatar.src = data.avatar;
+                editModalAvatar.src = data.avatar;
             }
+            if (data.bio) bioInput.value = data.bio;
+        }
+    } else {
+        currentUsername = "Guest";
+        currentUserText.textContent = "Guest";
+        authModalBtn.classList.remove("hidden");
+        logoutBtn.classList.add("hidden");
+    }
+});
+
+// Profile Modal & Bio Editing
+topLeftProfile?.addEventListener("click", () => {
+    if (currentUsername === "Guest") {
+        authOverlay.classList.remove("hidden");
+        return;
+    }
+    profileDisplayUsername.textContent = currentUsername;
+    profileOverlay.classList.remove("hidden");
+});
+closeProfileModal?.addEventListener("click", () => profileOverlay.classList.add("hidden"));
+
+openAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.remove("hidden"));
+closeAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
+
+document.querySelectorAll(".preset-avatar").forEach(img => {
+    img.addEventListener("click", async (e) => {
+        const selected = e.target.getAttribute("data-avatar");
+        myMiniAvatar.src = selected;
+        editModalAvatar.src = selected;
+        avatarSelectorOverlay.classList.add("hidden");
+        if (currentUsername !== "Guest") {
+            await updateDoc(doc(db, "users", currentUsername), { avatar: selected });
+        }
+    });
+});
+
+bioInput?.addEventListener("input", () => {
+    const left = 150 - bioInput.value.length;
+    bioCharCount.textContent = `${left} characters left`;
+});
+
+saveBioBtn?.addEventListener("click", async () => {
+    if (currentUsername === "Guest") return;
+    await updateDoc(doc(db, "users", currentUsername), { bio: bioInput.value.trim() });
+    profileOverlay.classList.add("hidden");
+});
+
+// Emoji Keyboard & Sizing Setup
+const videoEmojis = ["myvideo.mp4"];
+const popularEmojis = ["😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀", "🙏", "👌", "❤️", "😊", "😢", "💯", "✨", "🎉", "😎", "🥳"];
+const avatarEmojis = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+
+function renderEmojis() {
+    discordEmojiGrid.innerHTML = "";
+    videoEmojis.forEach(videoFile => {
+        const video = document.createElement("video");
+        video.src = videoFile;
+        video.className = "discord-video-emoji-item";
+        video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true;
+        video.addEventListener("click", () => {
+            messageInput.value += ` <video src="${videoFile}" class="inline-chat-video-emoji" autoplay loop muted playsinline></video> `;
+            messageInput.focus();
+            discordEmojiPicker.classList.add("hidden");
         });
+        discordEmojiGrid.appendChild(video);
+    });
 
-        animationFrameId = requestAnimationFrame(runAnimationLoop);
+    avatarEmojis.forEach(avatar => {
+        const img = document.createElement("img");
+        img.src = avatar;
+        img.className = "discord-avatar-emoji-item";
+        img.addEventListener("click", () => {
+            messageInput.value += ` <img src="${avatar}" class="inline-chat-avatar-emoji" alt="emoji" /> `;
+            messageInput.focus();
+            discordEmojiPicker.classList.add("hidden");
+        });
+        discordEmojiGrid.appendChild(img);
+    });
+
+    popularEmojis.forEach(emoji => {
+        const span = document.createElement("span");
+        span.className = "discord-emoji-item";
+        span.textContent = emoji;
+        span.addEventListener("click", () => {
+            messageInput.value += emoji;
+            messageInput.focus();
+            discordEmojiPicker.classList.add("hidden");
+        });
+        discordEmojiGrid.appendChild(span);
+    });
+}
+renderEmojis();
+
+emojiBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    discordEmojiPicker.classList.toggle("hidden");
+});
+document.addEventListener("click", (e) => {
+    if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
+        discordEmojiPicker.classList.add("hidden");
     }
+});
 
-    // ==========================================================================
-    // UI Event Handlers, Navigation & Interaction Controllers
-    // ==========================================================================
-    function bindEventListeners() {
-        // Toggle Friends/DMs Overlay Panel
-        if (DOM.openDMsOverlayBtn) {
-            DOM.openDMsOverlayBtn.addEventListener('click', () => {
-                toggleDMsOverlay(true);
-                playUiClickSound();
-            });
-        }
+// Message Submission & Rendering
+messageForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = messageInput.value.trim();
+    if (!text || currentUsername === "Guest") return;
 
-        if (DOM.closeDMsOverlayBtn) {
-            DOM.closeDMsOverlayBtn.addEventListener('click', () => {
-                toggleDMsOverlay(false);
-                playUiClickSound();
-            });
-        }
+    let userAvatar = "avatar1.png";
+    try {
+        const snap = await getDoc(doc(db, "users", currentUsername));
+        if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
+    } catch(e){}
 
-        // Sidebar Navigation Trigger Switchers
-        if (DOM.triggerGlobalChatPanel) {
-            DOM.triggerGlobalChatPanel.addEventListener('click', () => {
-                switchActiveWorkspaceView('global-chat');
-                playUiClickSound();
-            });
-        }
+    messageInput.value = "";
+    await addDoc(collection(db, "messages"), {
+        text,
+        username: currentUsername,
+        avatar: userAvatar,
+        timestamp: serverTimestamp()
+    });
+});
 
-        // Message Composer Form Submission Handler
-        if (DOM.messageComposerForm) {
-            DOM.messageComposerForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                handleOutgoingMessageSubmission();
-            });
-        }
-
-        // Music Modal Trigger Handler
-        if (DOM.musicPlayerHeaderBtn) {
-            DOM.musicPlayerHeaderBtn.addEventListener('click', () => {
-                openModal('music');
-                playUiClickSound();
-            });
-        }
-
-        // Settings Modal Trigger Handler
-        if (DOM.openSettingsPanelBtn) {
-            DOM.openSettingsPanelBtn.addEventListener('click', () => {
-                openModal('settings');
-                playUiClickSound();
-            });
-        }
-
-        // Audio Engine Toggle Header Button
-        if (DOM.audioEngineToggleBtn) {
-            DOM.audioEngineToggleBtn.addEventListener('click', () => {
-                toggleGlobalAudioState();
-            });
-        }
-
-        // Close Modals Action Listeners
-        if (DOM.closeMusicModalBtn) DOM.closeMusicModalBtn.addEventListener('click', closeModal);
-        if (DOM.closeSettingsModalBtn) DOM.closeSettingsModalBtn.addEventListener('click', closeModal);
+const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+onSnapshot(q, (snapshot) => {
+    messagesContainer.innerHTML = "";
+    snapshot.forEach(docSnap => {
+        const msg = docSnap.data();
+        const isSent = msg.username === currentUsername;
+        const div = document.createElement("div");
+        div.className = `msg ${isSent ? 'sent' : 'received'}`;
         
-        if (DOM.modalContainerRoot) {
-            DOM.modalContainerRoot.addEventListener('click', (e) => {
-                if (e.target === DOM.modalContainerRoot) {
-                    closeModal();
-                }
-            });
-        }
-
-        // Audio Modal Play/Pause Control Button
-        if (DOM.audioPlayPauseBtn) {
-            DOM.audioPlayPauseBtn.addEventListener('click', () => {
-                toggleStreamPlayback();
-            });
-        }
-
-        // Audio Volume Slider Controller
-        if (DOM.audioVolumeSlider) {
-            DOM.audioVolumeSlider.addEventListener('input', (e) => {
-                state.settings.audioVolume = e.target.value;
-            });
-        }
-
-        // Settings Configuration Form Controllers
-        if (DOM.starDensitySelect) {
-            DOM.starDensitySelect.addEventListener('change', (e) => {
-                state.settings.starDensity = e.target.value;
-                generateStarParticles();
-            });
-        }
-
-        if (DOM.soundEffectsToggle) {
-            DOM.soundEffectsToggle.addEventListener('change', (e) => {
-                state.settings.soundEffects = e.target.checked;
-            });
-        }
-
-        // Friends Search Filtering Controller
-        if (DOM.friendsSearchInput) {
-            DOM.friendsSearchInput.addEventListener('input', (e) => {
-                filterFriendsListQuery(e.target.value);
-            });
-        }
-
-        // Session Termination Handler
-        if (DOM.sessionLogoutBtn) {
-            DOM.sessionLogoutBtn.addEventListener('click', () => {
-                handleSessionTermination();
-            });
-        }
-
-        // Global Keyboard Shortcut Listener
-        window.addEventListener('keydown', (e) => {
-            handleGlobalKeyboardShortcuts(e);
-        });
-    }
-
-    function toggleDMsOverlay(isOpen) {
-        state.isDMsOpen = isOpen;
-        if (DOM.friendsOverlayPanel) {
-            if (isOpen) {
-                DOM.friendsOverlayPanel.classList.add('open');
-                if (DOM.openDMsOverlayBtn) DOM.openDMsOverlayBtn.classList.add('active');
-            } else {
-                DOM.friendsOverlayPanel.classList.remove('open');
-                if (DOM.openDMsOverlayBtn) DOM.openDMsOverlayBtn.classList.remove('active');
-            }
-        }
-    }
-
-    function switchActiveWorkspaceView(viewName) {
-        state.activeView = viewName;
-        // Highlight corresponding sidebar button
-        document.querySelectorAll('.sidebar-trigger-icon-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        if (viewName === 'global-chat' && DOM.triggerGlobalChatPanel) {
-            DOM.triggerGlobalChatPanel.classList.add('active');
-        }
-    }
-
-    function handleOutgoingMessageSubmission() {
-        if (!DOM.messageInputTextField) return;
-        const textValue = DOM.messageInputTextField.value.trim();
-        if (!textValue) return;
-
-        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        const newMessage = {
-            id: 'msg-' + Date.now(),
-            author: state.currentUser.username,
-            avatar: state.currentUser.avatar,
-            timestamp: currentTime,
-            text: textValue,
-            reactions: {}
-        };
-
-        state.messages.push(newMessage);
-        renderNewMessageNode(newMessage);
-
-        DOM.messageInputTextField.value = '';
-        scrollToBottomChat();
-        simulateIncomingAutoResponseIfNeeded(textValue);
-    }
-
-    function renderNewMessageNode(msg) {
-        if (!DOM.chatMessagesContainer) return;
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'chat-message-item incoming-msg';
-        messageDiv.setAttribute('data-message-id', msg.id);
-
-        messageDiv.innerHTML = `
-            <div class="msg-author-avatar-col">
-                <img src="${escapeHTML(msg.avatar)}" alt="User Avatar" class="msg-avatar-thumb">
-            </div>
-            <div class="msg-content-col">
-                <div class="msg-meta-header">
-                    <span class="msg-author-name">${escapeHTML(msg.author)}</span>
-                    <span class="msg-timestamp">${escapeHTML(msg.timestamp)}</span>
+        div.innerHTML = `
+            <img src="${msg.avatar || 'avatar1.png'}" class="msg-avatar-img" />
+            <div class="msg-content">
+                <div class="msg-header">
+                    <span class="msg-author">${msg.username}</span>
+                    <span class="msg-time">Just now</span>
                 </div>
-                <div class="msg-text-body">
-                    ${escapeHTML(msg.text)}
-                </div>
+                <div class="msg-bubble">${msg.text}</div>
             </div>
         `;
 
-        DOM.chatMessagesContainer.appendChild(messageDiv);
-    }
+        div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
+            el.addEventListener("click", () => openUserProfileModal(msg.username));
+        });
 
-    function simulateIncomingAutoResponseIfNeeded(userText) {
-        if (!DOM.typingIndicatorBar) return;
-        
-        setTimeout(() => {
-            DOM.typingIndicatorBar.classList.remove('hidden');
-            scrollToBottomChat();
+        messagesContainer.appendChild(div);
+    });
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+});
 
-            setTimeout(() => {
-                DOM.typingIndicatorBar.classList.add('hidden');
-                
-                const autoReplyText = `Echo response to: "${userText.substring(0, 24)}..." - Secure channel active.`;
-                const replyMessage = {
-                    id: 'msg-' + Date.now(),
-                    author: 'SimpleChat AI Guard',
-                    avatar: 'icon.png',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    text: autoReplyText,
-                    reactions: {}
-                };
-                state.messages.push(replyMessage);
-                renderNewMessageNode(replyMessage);
-                scrollToBottomChat();
-            }, 1800);
-        }, 800);
-    }
+// User Profile Bio & Friend Actions
+async function openUserProfileModal(username) {
+    viewingProfileUsername = username;
+    viewUserName.textContent = username;
+    viewUserAvatar.src = "avatar1.png";
+    viewUserBio.textContent = "Loading bio...";
+    profileFriendActionBtn.textContent = "Send Friend Request";
+    profileFriendActionBtn.disabled = false;
 
-    function scrollToBottomChat() {
-        if (DOM.chatMessagesContainer && state.settings.autoScroll) {
-            DOM.chatMessagesContainer.scrollTop = DOM.chatMessagesContainer.scrollHeight;
+    try {
+        const userDoc = await getDoc(doc(db, "users", username));
+        if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.avatar) viewUserAvatar.src = data.avatar;
+            if (data.bio) viewUserBio.textContent = data.bio;
         }
+
+        if (currentUsername !== "Guest" && currentUsername !== username) {
+            const myDoc = await getDoc(doc(db, "users", currentUsername));
+            if (myDoc.exists()) {
+                const myData = myDoc.data();
+                if ((myData.friends || []).includes(username)) {
+                    profileFriendActionBtn.textContent = "Friends";
+                    profileFriendActionBtn.disabled = true;
+                } else {
+                    const targetDoc = await getDoc(doc(db, "users", username));
+                    const targetRequests = (targetDoc.data() || {}).friendRequests || [];
+                    if (targetRequests.includes(currentUsername)) {
+                        profileFriendActionBtn.textContent = "Sent";
+                        profileFriendActionBtn.disabled = true;
+                    }
+                }
+            }
+        } else if (currentUsername === username) {
+            profileFriendActionBtn.textContent = "This is You";
+            profileFriendActionBtn.disabled = true;
+        }
+    } catch(e) {
+        console.error(e);
     }
 
-    function filterFriendsListQuery(queryStr) {
-        const query = queryStr.toLowerCase().trim();
-        const cards = document.querySelectorAll('.friend-circle-card-item');
-        
-        cards.forEach(card => {
-            const nameEl = card.querySelector('.friend-display-name');
-            const statusEl = card.querySelector('.friend-status-text');
-            if (!nameEl || !statusEl) return;
+    viewProfileOverlay.classList.remove("hidden");
+}
 
-            const nameText = nameEl.textContent.toLowerCase();
-            const statusText = statusEl.textContent.toLowerCase();
+closeViewProfile?.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
-            if (nameText.includes(query) || statusText.includes(query)) {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = 'none';
-            }
+profileFriendActionBtn?.addEventListener("click", async () => {
+    if (currentUsername === "Guest" || !viewingProfileUsername) return;
+    await updateDoc(doc(db, "users", viewingProfileUsername), {
+        friendRequests: arrayUnion(currentUsername)
+    });
+    profileFriendActionBtn.textContent = "Sent";
+    profileFriendActionBtn.disabled = true;
+});
+
+// Friends Manager
+sendFriendRequestBtn?.addEventListener("click", async () => {
+    const targetName = addFriendInput.value.trim();
+    if (!targetName || currentUsername === "Guest") return;
+
+    try {
+        const targetSnap = await getDoc(doc(db, "users", targetName));
+        if (!targetSnap.exists()) {
+            friendActionMsg.textContent = "User not found.";
+            return;
+        }
+        await updateDoc(doc(db, "users", targetName), {
+            friendRequests: arrayUnion(currentUsername)
+        });
+        friendActionMsg.textContent = `Friend request sent to ${targetName}!`;
+        addFriendInput.value = "";
+        loadFriendsAndRequests();
+    } catch (err) {
+        friendActionMsg.textContent = "Error sending request.";
+    }
+});
+
+async function loadFriendsAndRequests() {
+    if (currentUsername === "Guest") return;
+    pendingRequestsContainer.innerHTML = "";
+    friendsListContainer.innerHTML = "";
+
+    const mySnap = await getDoc(doc(db, "users", currentUsername));
+    if (!mySnap.exists()) return;
+    const myData = mySnap.data();
+
+    const requests = myData.friendRequests || [];
+    const friends = myData.friends || [];
+
+    if (requests.length === 0) {
+        pendingRequestsContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No pending requests.</p>`;
+    } else {
+        requests.forEach(reqUser => {
+            const row = document.createElement("div");
+            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
+            row.innerHTML = `<span>${reqUser}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
+            row.querySelector("button").addEventListener("click", () => acceptFriendRequest(reqUser));
+            pendingRequestsContainer.appendChild(row);
         });
     }
 
-    function openModal(modalType) {
-        if (!DOM.modalContainerRoot) return;
-        DOM.modalContainerRoot.classList.add('active');
-        
-        if (modalType === 'music' && DOM.musicPlayerModalDialog) {
-            DOM.musicPlayerModalDialog.classList.add('active');
-            if (DOM.settingsModalDialog) DOM.settingsModalDialog.classList.remove('active');
-        } else if (modalType === 'settings' && DOM.settingsModalDialog) {
-            DOM.settingsModalDialog.classList.add('active');
-            if (DOM.musicPlayerModalDialog) DOM.musicPlayerModalDialog.classList.remove('active');
-        }
-        state.activeModal = modalType;
+    if (friends.length === 0) {
+        friendsListContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No friends added yet.</p>`;
+    } else {
+        friends.forEach(friend => {
+            const row = document.createElement("div");
+            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
+            row.innerHTML = `<span style="cursor: pointer; font-weight: 600;">${friend}</span><span style="font-size: 12px; color: var(--success);">Friends</span>`;
+            row.querySelector("span").addEventListener("click", () => openUserProfileModal(friend));
+            friendsListContainer.appendChild(row);
+        });
     }
+}
 
-    function closeModal() {
-        if (!DOM.modalContainerRoot) return;
-        DOM.modalContainerRoot.classList.remove('active');
-        if (DOM.musicPlayerModalDialog) DOM.musicPlayerModalDialog.classList.remove('active');
-        if (DOM.settingsModalDialog) DOM.settingsModalDialog.classList.remove('active');
-        state.activeModal = null;
-    }
+async function acceptFriendRequest(friendName) {
+    const myRef = doc(db, "users", currentUsername);
+    const friendRef = doc(db, "users", friendName);
 
-    function toggleGlobalAudioState() {
-        state.audioPlaying = !state.audioPlaying;
-        if (DOM.audioEngineToggleBtn) {
-            if (state.audioPlaying) {
-                DOM.audioEngineToggleBtn.style.borderColor = '#4ade80';
-                DOM.audioEngineToggleBtn.style.color = '#4ade80';
-            } else {
-                DOM.audioEngineToggleBtn.style.borderColor = '';
-                DOM.audioEngineToggleBtn.style.color = '';
-            }
-        }
-    }
-
-    function toggleStreamPlayback() {
-        if (!DOM.audioPlayPauseBtn) return;
-        state.audioPlaying = !state.audioPlaying;
-        if (state.audioPlaying) {
-            DOM.audioPlayPauseBtn.textContent = 'Pause Stream';
-            DOM.audioPlayPauseBtn.style.backgroundColor = '#22c55e';
-        } else {
-            DOM.audioPlayPauseBtn.textContent = 'Play Stream';
-            DOM.audioPlayPauseBtn.style.backgroundColor = '';
-        }
-    }
-
-    function playUiClickSound() {
-        if (!state.settings.soundEffects) return;
-        // Synthesizer click simulation stub
-    }
-
-    function handleSessionTermination() {
-        if (confirm('Are you sure you want to terminate your current enterprise session?')) {
-            alert('Session successfully terminated. Refreshing portal state...');
-            window.location.reload();
-        }
-    }
-
-    function handleGlobalKeyboardShortcuts(e) {
-        // Escape key closes modals or overlays
-        if (e.key === 'Escape') {
-            if (state.activeModal) {
-                closeModal();
-            } else if (state.isDMsOpen) {
-                toggleDMsOverlay(false);
-            }
-        }
-        // Ctrl + K or Cmd + K focuses search or message input
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            if (DOM.messageInputTextField) {
-                DOM.messageInputTextField.focus();
-            }
-        }
-    }
-
-    function escapeHTML(str) {
-        return String(str).replace(/[&<>'"]/g, 
-            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-        );
-    }
-
-    // Public Application Initialization Controller Hook
-    function init() {
-        cacheDOMReferences();
-        initStarfieldEngine();
-        bindEventListeners();
-        scrollToBottomChat();
-        console.info('SimpleChat Enterprise Production Application Initialized Successfully. Version 4.5.1 active.');
-    }
-
-    return {
-        init: init,
-        getState: () => state,
-        toggleDMsOverlay: toggleDMsOverlay,
-        openModal: openModal,
-        closeModal: closeModal
-    };
-
-})();
-
-// Auto-boot application engine execution on DOM content ready
-document.addEventListener('DOMContentLoaded', () => {
-    SimpleChatApp.init();
-});
+    await updateDoc(myRef, {
+        friends: arrayUnion(friendName),
+        friendRequests: arrayRemove(friendName)
+    });
+    await updateDoc(friendRef, {
+        friends: arrayUnion(currentUsername)
+    });
+    loadFriendsAndRequests();
+}
