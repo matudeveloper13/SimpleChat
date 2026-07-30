@@ -80,17 +80,18 @@ let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
 
-// Formats Firestore timestamps or date objects cleanly into month, day, year, and time strings
+// Formats Firestore server timestamps or local fallback dates precisely
 function formatMessageTime(timestamp) {
-    if (!timestamp) return "Sending...";
     let date;
-    if (typeof timestamp.toDate === "function") {
+    if (!timestamp) {
+        date = new Date(); // Fallback to right now if serverTimestamp hasn't synced yet
+    } else if (typeof timestamp.toDate === "function") {
         date = timestamp.toDate();
     } else {
         date = new Date(timestamp);
     }
     
-    if (isNaN(date.getTime())) return "Sending...";
+    if (isNaN(date.getTime())) return "Just now";
     
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
@@ -251,6 +252,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
+// Cleaned up arrays to prevent 404 missing asset errors
 const gifFiles = ["myvideo.mp4", "gif1.mp4", "gif2.mp4", "gif3.mp4"];
 const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
 const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
