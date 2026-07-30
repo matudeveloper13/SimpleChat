@@ -16,10 +16,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
-const currentUserText = document.getElementById("current-user-text");
 const authOverlay = document.getElementById("auth-overlay");
 const closeModalBtn = document.getElementById("close-modal-btn");
 const loginForm = document.getElementById("login-form");
@@ -67,7 +65,6 @@ const profileFriendActionBtn = document.getElementById("profile-friend-action-bt
 const emojiBtn = document.getElementById("emoji-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
-const emojiSearchInput = document.getElementById("emoji-search-input");
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -75,7 +72,6 @@ const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 let currentUsername = "matutbanana2";
 let viewingProfileUsername = null;
 
-// View toggles
 navFriendsBtn?.addEventListener("click", () => {
     globalChatSection.classList.add("hidden");
     friendsSection.classList.remove("hidden");
@@ -87,7 +83,6 @@ backToChatBtn?.addEventListener("click", () => {
     globalChatSection.classList.remove("hidden");
 });
 
-// Auth tabs
 tabRegister?.addEventListener("click", () => {
     tabRegister.className = "tab-btn active";
     tabLogin.className = "tab-btn";
@@ -118,7 +113,7 @@ registerForm?.addEventListener("submit", async (e) => {
             avatar: "avatar1.png",
             friends: [],
             friendRequests: []
-        }, { merge: true });
+        });
         authOverlay.classList.add("hidden");
     } catch (err) {
         authError.textContent = err.message;
@@ -140,7 +135,6 @@ loginForm?.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUsername = user.email.split("@")[0];
-        currentUserText.textContent = currentUsername;
         myMiniUsername.textContent = currentUsername;
         authModalBtn.classList.add("hidden");
         logoutBtn.classList.remove("hidden");
@@ -165,13 +159,12 @@ onAuthStateChanged(auth, async (user) => {
         }
     } else {
         currentUsername = "Guest";
-        currentUserText.textContent = "Guest";
+        myMiniUsername.textContent = "Guest";
         authModalBtn.classList.remove("hidden");
         logoutBtn.classList.add("hidden");
     }
 });
 
-// Profile Modal & Bio Editing
 topLeftProfile?.addEventListener("click", () => {
     if (currentUsername === "Guest") {
         authOverlay.classList.remove("hidden");
@@ -208,63 +201,30 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Emoji Keyboard & Sizing Setup
-const videoEmojis = ["myvideo.mp4"];
-const popularEmojis = ["😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀", "🙏", "👌", "❤️", "😊", "😢", "💯", "✨", "🎉", "😎", "🥳"];
-const avatarEmojis = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
-
-function renderEmojis() {
-    discordEmojiGrid.innerHTML = "";
-    videoEmojis.forEach(videoFile => {
-        const video = document.createElement("video");
-        video.src = videoFile;
-        video.className = "discord-video-emoji-item";
-        video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true;
-        video.addEventListener("click", () => {
-            messageInput.value += ` <video src="${videoFile}" class="inline-chat-video-emoji" autoplay loop muted playsinline></video> `;
-            messageInput.focus();
-            discordEmojiPicker.classList.add("hidden");
-        });
-        discordEmojiGrid.appendChild(video);
+const popularEmojis = ["😂", "😭", "🤣", "👀", "😍", "🙄", "👍", "🤔", "🔥", "💀", "🙏", "👌", "❤️", "😊"];
+popularEmojis.forEach(emoji => {
+    const span = document.createElement("span");
+    span.className = "discord-emoji-item";
+    span.textContent = emoji;
+    span.addEventListener("click", () => {
+        messageInput.value += emoji;
+        messageInput.focus();
+        discordEmojiPicker.classList.add("hidden");
     });
-
-    avatarEmojis.forEach(avatar => {
-        const img = document.createElement("img");
-        img.src = avatar;
-        img.className = "discord-avatar-emoji-item";
-        img.addEventListener("click", () => {
-            messageInput.value += ` <img src="${avatar}" class="inline-chat-avatar-emoji" alt="emoji" /> `;
-            messageInput.focus();
-            discordEmojiPicker.classList.add("hidden");
-        });
-        discordEmojiGrid.appendChild(img);
-    });
-
-    popularEmojis.forEach(emoji => {
-        const span = document.createElement("span");
-        span.className = "discord-emoji-item";
-        span.textContent = emoji;
-        span.addEventListener("click", () => {
-            messageInput.value += emoji;
-            messageInput.focus();
-            discordEmojiPicker.classList.add("hidden");
-        });
-        discordEmojiGrid.appendChild(span);
-    });
-}
-renderEmojis();
+    discordEmojiGrid.appendChild(span);
+});
 
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     discordEmojiPicker.classList.toggle("hidden");
 });
+
 document.addEventListener("click", (e) => {
     if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
         discordEmojiPicker.classList.add("hidden");
     }
 });
 
-// Message Submission & Rendering
 messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = messageInput.value.trim();
@@ -299,7 +259,7 @@ onSnapshot(q, (snapshot) => {
             <div class="msg-content">
                 <div class="msg-header">
                     <span class="msg-author">${msg.username}</span>
-                    <span class="msg-time">Just now</span>
+                    <span class="msg-time">Now</span>
                 </div>
                 <div class="msg-bubble">${msg.text}</div>
             </div>
@@ -314,7 +274,6 @@ onSnapshot(q, (snapshot) => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
 
-// User Profile Bio & Friend Actions
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
     viewUserName.textContent = username;
@@ -342,7 +301,7 @@ async function openUserProfileModal(username) {
                     const targetDoc = await getDoc(doc(db, "users", username));
                     const targetRequests = (targetDoc.data() || {}).friendRequests || [];
                     if (targetRequests.includes(currentUsername)) {
-                        profileFriendActionBtn.textContent = "Sent";
+                        profileFriendActionBtn.textContent = "Request Sent";
                         profileFriendActionBtn.disabled = true;
                     }
                 }
@@ -351,9 +310,7 @@ async function openUserProfileModal(username) {
             profileFriendActionBtn.textContent = "This is You";
             profileFriendActionBtn.disabled = true;
         }
-    } catch(e) {
-        console.error(e);
-    }
+    } catch(e) {}
 
     viewProfileOverlay.classList.remove("hidden");
 }
@@ -365,11 +322,10 @@ profileFriendActionBtn?.addEventListener("click", async () => {
     await updateDoc(doc(db, "users", viewingProfileUsername), {
         friendRequests: arrayUnion(currentUsername)
     });
-    profileFriendActionBtn.textContent = "Sent";
+    profileFriendActionBtn.textContent = "Request Sent";
     profileFriendActionBtn.disabled = true;
 });
 
-// Friends Manager
 sendFriendRequestBtn?.addEventListener("click", async () => {
     const targetName = addFriendInput.value.trim();
     if (!targetName || currentUsername === "Guest") return;
@@ -421,7 +377,7 @@ async function loadFriendsAndRequests() {
         friends.forEach(friend => {
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
-            row.innerHTML = `<span style="cursor: pointer; font-weight: 600;">${friend}</span><span style="font-size: 12px; color: var(--success);">Friends</span>`;
+            row.innerHTML = `<span style="cursor: pointer; font-weight: 600;">${friend}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
             row.querySelector("span").addEventListener("click", () => openUserProfileModal(friend));
             friendsListContainer.appendChild(row);
         });
