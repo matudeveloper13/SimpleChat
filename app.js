@@ -124,11 +124,15 @@ function formatMessageTime(timestamp) {
 }
 
 function sanitizeMessageHTML(str) {
+    if (!str) return "";
     const temp = document.createElement("div");
     temp.textContent = str;
     let safeText = temp.innerHTML;
-    // Renders custom avatar emojis in text as tiny round 24px emojis
-    return safeText.replace(/&lt;img src="(.*?)" class="inline-avatar-emoji" \/&gt;/g, '<img src="$1" class="inline-avatar-emoji" />');
+
+    // Safely restores inline avatar images sent as tags
+    return safeText.replace(/&lt;img\s+src="([^"]+)"\s+class="inline-avatar-emoji"\s*\/?&gt;/gi, (match, src) => {
+        return `<img src="${src}" class="inline-avatar-emoji" alt="emoji" />`;
+    });
 }
 
 function scrollToBottom() {
@@ -286,7 +290,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// DM Photo Upload with strict validation warning
+// Photo Upload in DMs
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -296,7 +300,6 @@ fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Strict photo type check
     const validImageTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
     if (!validImageTypes.includes(file.type)) {
         alert("ONLY PHOTOS! Please select a PNG, JPG, or GIF image.");
@@ -334,7 +337,7 @@ fileInput.addEventListener("change", async (e) => {
     fileInput.value = "";
 });
 
-// Build Emoji, Avatar Emojis & MP4 GIF Pad
+// Build Picker items with Mobile Touch Support
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
 
@@ -344,52 +347,69 @@ if (discordEmojiGrid) {
         const emojiDiv = document.createElement("div");
         emojiDiv.className = "discord-picker-emoji-thumb";
         emojiDiv.textContent = em;
-        emojiDiv.addEventListener("click", () => {
+
+        const handleEmojiSelect = (e) => {
+            e.preventDefault();
             messageInput.value += em;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
-        });
+        };
+
+        emojiDiv.addEventListener("click", handleEmojiSelect);
+        emojiDiv.addEventListener("touchend", handleEmojiSelect);
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
-    // 2. Avatar Emojis (Inserts small 24px round inline emoji into message)
+    // 2. Avatar Emojis
     const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
     avatars.forEach(av => {
         const imgThumb = document.createElement("img");
         imgThumb.src = av;
         imgThumb.className = "discord-picker-emoji-thumb";
-        imgThumb.style.width = "26px";
-        imgThumb.style.height = "26px";
+        imgThumb.style.width = "28px";
+        imgThumb.style.height = "28px";
         imgThumb.style.borderRadius = "50%";
         imgThumb.style.objectFit = "cover";
         imgThumb.style.cursor = "pointer";
 
-        imgThumb.addEventListener("click", () => {
+        const handleAvatarSelect = (e) => {
+            e.preventDefault();
             messageInput.value += `<img src="${av}" class="inline-avatar-emoji" />`;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
-        });
+        };
+
+        imgThumb.addEventListener("click", handleAvatarSelect);
+        imgThumb.addEventListener("touchend", handleAvatarSelect);
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // 3. MP4 GIFs (Disabled hover controls)
+    // 3. MP4 GIFs
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "discord-picker-emoji-thumb video-wrapper";
+        wrapper.style.width = "36px";
+        wrapper.style.height = "36px";
+        wrapper.style.position = "relative";
+        wrapper.style.cursor = "pointer";
+
         const vidThumb = document.createElement("video");
         vidThumb.src = videoSrc;
         vidThumb.autoplay = true;
         vidThumb.loop = true;
         vidThumb.muted = true;
         vidThumb.playsInline = true;
-        vidThumb.className = "discord-picker-emoji-thumb video-gif-thumb";
-        
-        vidThumb.style.width = "28px";
-        vidThumb.style.height = "28px";
+        vidThumb.style.width = "100%";
+        vidThumb.style.height = "100%";
         vidThumb.style.objectFit = "cover";
         vidThumb.style.borderRadius = "4px";
-        vidThumb.style.cursor = "pointer";
+        vidThumb.style.pointerEvents = "none";
 
-        vidThumb.addEventListener("click", async () => {
+        wrapper.appendChild(vidThumb);
+
+        const handleGifSelect = async (e) => {
+            e.preventDefault();
             discordEmojiPicker.classList.add("hidden");
             if (currentUsername === "Guest") return;
 
@@ -397,7 +417,7 @@ if (discordEmojiGrid) {
             try {
                 const snap = await getDoc(doc(db, "users", currentUsername));
                 if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-            } catch(e){}
+            } catch(err){}
 
             const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
 
@@ -409,8 +429,11 @@ if (discordEmojiGrid) {
                 room: roomKey,
                 timestamp: serverTimestamp()
             });
-        });
-        discordEmojiGrid.appendChild(vidThumb);
+        };
+
+        wrapper.addEventListener("click", handleGifSelect);
+        wrapper.addEventListener("touchend", handleGifSelect);
+        discordEmojiGrid.appendChild(wrapper);
     });
 }
 
@@ -506,19 +529,18 @@ function loadMessagesFeed() {
             if (msg.mediaUrl || msg.imageUrl) {
                 const mediaPath = msg.mediaUrl || msg.imageUrl;
                 const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
-                
+                const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
+
                 if (isVideo) {
                     contentHTML = `
                         <video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;">
                         </video>`;
+                } else if (isAvatarEmoji) {
+                    // Lock preset avatar photos to tiny inline 24px emoji size
+                    contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
                 } else {
-                    // Check if media is a small custom avatar emoji or full photo upload
-                    const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
-                    if (isAvatarEmoji) {
-                        contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" />`;
-                    } else {
-                        contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
-                    }
+                    // Uploaded user photos
+                    contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
                 }
             } else {
                 contentHTML = sanitizeMessageHTML(msg.text || "");

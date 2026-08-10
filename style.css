@@ -140,7 +140,7 @@ body {
 
 .msg-content { display: flex; flex-direction: column; }
 .msg.sent .msg-content { align-items: flex-end; }
-.msg.received .msg-content { align-items: flex-start; }
+.msg-received .msg-content { align-items: flex-start; }
 
 .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; }
 .msg-author { font-weight: 600; color: var(--text-main); cursor: pointer; }
@@ -153,11 +153,13 @@ body {
 .msg.received .msg-bubble { background: var(--bubble-received); color: var(--text-main); border: 1px solid var(--border-color); border-top-left-radius: 4px; }
 .msg.sent .msg-bubble { background: var(--bubble-sent); color: var(--bubble-sent-text); border-top-right-radius: 4px; }
 
-/* Forces avatar emojis to render SMALL and ROUNDED in chat bubbles */
+/* Strictly locks inline avatar emojis to tiny 24px rounded elements */
 .inline-avatar-emoji {
   width: 24px !important;
   height: 24px !important;
-  border-radius: 50% !important; /* Perfect circle */
+  max-width: 24px !important;
+  max-height: 24px !important;
+  border-radius: 50% !important;
   vertical-align: middle !important;
   display: inline-block !important;
   margin: 0 3px !important;
@@ -165,7 +167,7 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
-/* MP4 Videos acts like non-interactive GIFs */
+/* Force MP4 Videos to act strictly as non-interactive GIFs */
 .msg-bubble video, .video-gif-thumb {
   pointer-events: none !important;
   user-select: none !important;
@@ -259,4 +261,67 @@ body {
 
 #messages-container {
   overflow-y: auto;
+}
+
+/* -------------------------------------------------------------
+   MOBILE SPECIFIC OVERRIDES (Cozy UI layout for screens <600px)
+------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .chat-container {
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100%;
+    border-radius: 0;
+    border: none;
+  }
+
+  .absolute-discord-logo, .absolute-music-btn {
+    display: none !important; /* Clears top bar clutter on mobile */
+  }
+
+  .header {
+    padding: 10px 12px;
+  }
+
+  .brand-title-group h1 {
+    font-size: 14px;
+  }
+
+  .sub-nav-bar {
+    padding: 6px 12px;
+  }
+
+  .input-section {
+    padding: 10px 12px;
+  }
+
+  .message-form {
+    gap: 8px;
+  }
+
+  .input-wrapper input {
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 12px;
+  }
+
+  .messages-box {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .msg {
+    max-width: 90%;
+  }
+
+  .discord-emoji-picker {
+    width: calc(100vw - 24px);
+    left: 12px;
+    bottom: 60px;
+  }
 }
