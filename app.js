@@ -24,6 +24,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Helper function to render crown next to specific usernames if they match
+function renderUsernameWithCrown(username) {
+    const cleanName = (username || "").trim();
+    if (cleanName === "matubanana" || cleanName === "matubanana2") {
+        return `${sanitizeMessageHTML(cleanName)} <img src="crown.png" style="width: 14px; height: 14px; vertical-align: middle; display: inline-block; margin-left: 3px;" alt="Crown" />`;
+    }
+    return sanitizeMessageHTML(cleanName);
+}
+
 // Hidden file input restricted ONLY to PNG, JPG, JPEG for chat photos
 const fileInput = document.createElement("input");
 fileInput.type = "file";
@@ -221,7 +230,10 @@ loginForm?.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUsername = user.email.split("@")[0];
-        myMiniUsername.textContent = currentUsername;
+        
+        // Render mini username with crown if applicable
+        myMiniUsername.innerHTML = renderUsernameWithCrown(currentUsername);
+
         authModalBtn.classList.add("hidden");
         logoutBtn.classList.remove("hidden");
 
@@ -258,7 +270,8 @@ topLeftProfile?.addEventListener("click", () => {
         authOverlay.classList.remove("hidden");
         return;
     }
-    profileDisplayUsername.textContent = currentUsername;
+    // Render crown inside profile modal username header
+    profileDisplayUsername.innerHTML = renderUsernameWithCrown(currentUsername);
     profileOverlay.classList.remove("hidden");
 });
 closeProfileModal?.addEventListener("click", () => profileOverlay.classList.add("hidden"));
@@ -303,7 +316,6 @@ document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
-    // Completely wipe out any previous custom upload elements to prevent duplicates
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
 
     const uploadCustomBtn = document.createElement("button");
@@ -341,7 +353,6 @@ customAvatarFileInput.addEventListener("change", (e) => {
         activeImageObj.onload = function () {
             cropSourceImg.src = activeImageObj.src;
             
-            // Initial centering to fit nicely inside the 200x200 viewport circle
             imgScale = Math.max(200 / activeImageObj.width, 200 / activeImageObj.height);
             imgX = (200 - (activeImageObj.width * imgScale)) / 2;
             imgY = (200 - (activeImageObj.height * imgScale)) / 2;
@@ -363,7 +374,6 @@ function updateCropImageTransform() {
     cropSourceImg.style.transform = `translate(${imgX}px, ${imgY}px)`;
 }
 
-// Dragging and Zooming mechanics for TikTok-like experience
 cropViewport?.addEventListener("mousedown", (e) => {
     isDragging = true;
     startX = e.clientX - imgX;
@@ -633,7 +643,6 @@ messageForm?.addEventListener("submit", async (e) => {
         if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
     } catch(e){}
 
-    // Handle Imgbb Free Image Upload
     if (selectedImageFile && messageInput.value.includes("(image)")) {
         const fileToUpload = selectedImageFile;
         selectedImageFile = null;
@@ -672,7 +681,6 @@ messageForm?.addEventListener("submit", async (e) => {
         return;
     }
 
-    // Normal Text Message
     const text = messageInput.value.trim();
     if (!text) return;
 
@@ -744,11 +752,14 @@ function loadMessagesFeed() {
                 effectiveAvatar = myMiniAvatar.src;
             }
 
+            // Render author name with crown inside chat messages feed
+            const renderedAuthorName = renderUsernameWithCrown(msg.username);
+
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
-                        <span class="msg-author">${sanitizeMessageHTML(msg.username)}</span>
+                        <span class="msg-author">${renderedAuthorName}</span>
                         <span class="msg-time">${readableTime}</span>
                     </div>
                     <div class="msg-bubble">${contentHTML}</div>
@@ -800,7 +811,10 @@ function loadMessagesFeed() {
 // User Profiles & Friend Requests
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
-    viewUserName.textContent = username;
+    
+    // Render crown next to username in view profile modal header
+    viewUserName.innerHTML = renderUsernameWithCrown(username);
+
     viewUserAvatar.src = "avatar1.png";
     viewUserBio.textContent = "Loading bio...";
     profileFriendActionBtn.textContent = "Send Friend Request";
@@ -811,6 +825,7 @@ async function openUserProfileModal(username) {
         if (userDoc.exists()) {
             const data = userDoc.data();
             if (data.avatar) viewUserAvatar.src = data.avatar;
+            // Clean bio text untouched (crown excluded from bio text content)
             if (data.bio) viewUserBio.textContent = data.bio;
         }
 
@@ -905,7 +920,7 @@ async function loadFriendsAndRequests() {
     } else {
         friends.forEach(friend => {
             const row = document.createElement("div");
-            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
+            row.style.cssStr = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
             row.innerHTML = `<span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
