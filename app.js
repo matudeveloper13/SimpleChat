@@ -274,14 +274,14 @@ document.querySelectorAll(".preset-avatar").forEach(el => {
     });
 });
 
-// --- SINGLE CLEAN SQUARE PROFILE PICTURE BUTTON & TIKTOK-STYLE CROP PREVIEW MODAL ---
+// --- SINGLE BUTTON: "Upload Custom Profile Picture" & TIKTOK-STYLE CROP PREVIEW MODAL ---
 const customAvatarFileInput = document.createElement("input");
 customAvatarFileInput.type = "file";
 customAvatarFileInput.accept = "image/png, image/jpeg, image/jpg";
 customAvatarFileInput.style.display = "none";
 document.body.appendChild(customAvatarFileInput);
 
-// Build TikTok-style crop preview overlay dynamically to prevent duplicates
+// Build TikTok-style crop preview overlay dynamically
 const cropOverlay = document.createElement("div");
 cropOverlay.id = "crop-preview-overlay";
 cropOverlay.className = "modal-overlay hidden";
@@ -289,7 +289,7 @@ cropOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; heig
 cropOverlay.innerHTML = `
     <div class="modal" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center; max-width: 320px; width: 90%; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 15px; color: var(--text-color);">Position Your PFP</h3>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Drag/pan or scroll to zoom your image inside the circle.</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Drag to pan or scroll to zoom your image inside the circle.</p>
         <div id="crop-viewport" style="position: relative; width: 200px; height: 200px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 50%; border: 3px solid var(--primary-color); cursor: grab; background: #000;">
             <img id="crop-source-img" style="position: absolute; top: 0; left: 0; user-select: none; pointer-events: none; max-width: none;" />
         </div>
@@ -303,14 +303,14 @@ document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
-    // Remove any existing custom upload buttons to guarantee no duplicates
+    // Completely wipe out any previous custom upload elements to prevent duplicates
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
 
     const uploadCustomBtn = document.createElement("button");
     uploadCustomBtn.type = "button";
     uploadCustomBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
     uploadCustomBtn.style.cssText = "width: 100%; height: 44px; border-radius: 6px; margin-top: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;";
-    uploadCustomBtn.textContent = "Profile Picture";
+    uploadCustomBtn.textContent = "Upload Custom Profile Picture";
     
     uploadCustomBtn.addEventListener("click", () => {
         if (currentUsername === "Guest") {
@@ -341,7 +341,7 @@ customAvatarFileInput.addEventListener("change", (e) => {
         activeImageObj.onload = function () {
             cropSourceImg.src = activeImageObj.src;
             
-            // Initial positioning to fit nicely inside the 200x200 viewport circle
+            // Initial centering to fit nicely inside the 200x200 viewport circle
             imgScale = Math.max(200 / activeImageObj.width, 200 / activeImageObj.height);
             imgX = (200 - (activeImageObj.width * imgScale)) / 2;
             imgY = (200 - (activeImageObj.height * imgScale)) / 2;
@@ -363,7 +363,7 @@ function updateCropImageTransform() {
     cropSourceImg.style.transform = `translate(${imgX}px, ${imgY}px)`;
 }
 
-// Dragging and Pinch/Zoom functionality for TikTok-like cropping
+// Dragging and Zooming mechanics for TikTok-like experience
 cropViewport?.addEventListener("mousedown", (e) => {
     isDragging = true;
     startX = e.clientX - imgX;
@@ -420,7 +420,6 @@ document.getElementById("confirm-crop-btn")?.addEventListener("click", async () 
     canvas.height = outputSize;
     const ctx = canvas.getContext("2d");
 
-    // Map the viewport circle bounds to final cropped canvas image
     ctx.drawImage(
         activeImageObj,
         -imgX / imgScale,
