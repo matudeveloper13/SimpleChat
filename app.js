@@ -7,9 +7,6 @@ import {
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
     query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    getStorage, ref, uploadBytes, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
@@ -21,10 +18,11 @@ const firebaseConfig = {
     measurementId: "G-KDWQTRWZSQ"
 };
 
+const IMGBB_API_KEY = "5fbe075f08f860f0714328246630fdfc"; // Paste your free key here!
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 // Hidden file input restricted ONLY to PNG, JPG, JPEG
 const fileInput = document.createElement("input");
@@ -33,7 +31,7 @@ fileInput.accept = "image/png, image/jpeg, image/jpg";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
-let selectedImageFile = null; // Stores the chosen image file pending upload
+let selectedImageFile = null;
 
 // DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
@@ -313,7 +311,6 @@ fileInput.addEventListener("change", (e) => {
     messageInput.focus();
 });
 
-// Clear photo selection if user deletes "(image)" text
 messageInput?.addEventListener("input", () => {
     if (selectedImageFile && !messageInput.value.includes("(image)")) {
         selectedImageFile = null;
@@ -463,33 +460,46 @@ messageForm?.addEventListener("submit", async (e) => {
         if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
     } catch(e){}
 
-    // Handle Image Upload if selected
+    // Handle Imgbb Free Image Upload
     if (selectedImageFile && messageInput.value.includes("(image)")) {
         const fileToUpload = selectedImageFile;
         selectedImageFile = null;
         fileInput.value = "";
-        messageInput.value = "";
+        messageInput.value = "Uploading image...";
 
         try {
-            const fileRef = ref(storage, `chat_uploads/${Date.now()}_${fileToUpload.name}`);
-            const snapshot = await uploadBytes(fileRef, fileToUpload);
-            const downloadURL = await getDownloadURL(snapshot.ref);
+            const formData = new FormData();
+            formData.append("image", fileToUpload);
 
-            await addDoc(collection(db, "messages"), {
-                mediaUrl: downloadURL,
-                mediaType: "image",
-                username: currentUsername,
-                avatar: userAvatar,
-                room: roomKey,
-                timestamp: serverTimestamp()
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: "POST",
+                body: formData
             });
+
+            const data = await res.json();
+
+            if (data.success) {
+                messageInput.value = "";
+                await addDoc(collection(db, "messages"), {
+                    mediaUrl: data.data.url,
+                    mediaType: "image",
+                    username: currentUsername,
+                    avatar: userAvatar,
+                    room: roomKey,
+                    timestamp: serverTimestamp()
+                });
+            } else {
+                alert("Upload failed: " + data.error.message);
+                messageInput.value = "";
+            }
         } catch (err) {
             alert("Failed to send image: " + err.message);
+            messageInput.value = "";
         }
         return;
     }
 
-    // Handle Normal Text Message
+    // Normal Text Message
     const text = messageInput.value.trim();
     if (!text) return;
 
