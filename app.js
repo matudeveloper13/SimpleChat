@@ -123,7 +123,7 @@ function formatMessageTime(timestamp) {
     return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
 }
 
-// XSS Prevention Security Filter
+// Security Filter
 function escapeHTML(str) {
     const p = document.createElement("p");
     p.textContent = str;
@@ -286,7 +286,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Media / File Uploads
+// Media Uploads
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -318,7 +318,6 @@ fileInput.addEventListener("change", async (e) => {
             timestamp: serverTimestamp()
         });
 
-        scrollToBottom();
     } catch (err) {
         alert("Failed to upload media: " + err.message);
     }
@@ -343,7 +342,7 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
-    // Small Avatar Emojis
+    // Avatar Emojis (Sends avatar image directly as an emoji in chat)
     const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
     avatars.forEach(av => {
         const imgThumb = document.createElement("img");
@@ -353,15 +352,31 @@ if (discordEmojiGrid) {
         imgThumb.style.height = "28px";
         imgThumb.style.borderRadius = "50%";
         imgThumb.style.cursor = "pointer";
-        imgThumb.addEventListener("click", () => {
-            messageInput.value += `:${av.split('.')[0]}: `;
-            messageInput.focus();
+        imgThumb.addEventListener("click", async () => {
             discordEmojiPicker.classList.add("hidden");
+            if (currentUsername === "Guest") return;
+
+            let userAvatar = "avatar1.png";
+            try {
+                const snap = await getDoc(doc(db, "users", currentUsername));
+                if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
+            } catch(e){}
+
+            const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+
+            await addDoc(collection(db, "messages"), {
+                mediaUrl: av,
+                mediaType: "image",
+                username: currentUsername,
+                avatar: userAvatar,
+                room: roomKey,
+                timestamp: serverTimestamp()
+            });
         });
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // Video / GIF MP4 Emojis (Appears small in pad, sends full size to chat)
+    // Video / GIF MP4 Emojis (Acts as loop GIF, no controls/hover pause)
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const vidThumb = document.createElement("video");
@@ -372,7 +387,6 @@ if (discordEmojiGrid) {
         vidThumb.playsInline = true;
         vidThumb.className = "discord-picker-emoji-thumb video-gif-thumb";
         
-        // Strict small thumbnail dimensions so picker layout stays compact
         vidThumb.style.width = "28px";
         vidThumb.style.height = "28px";
         vidThumb.style.objectFit = "cover";
@@ -399,8 +413,6 @@ if (discordEmojiGrid) {
                 room: roomKey,
                 timestamp: serverTimestamp()
             });
-
-            scrollToBottom();
         });
         discordEmojiGrid.appendChild(vidThumb);
     });
@@ -464,8 +476,6 @@ messageForm?.addEventListener("submit", async (e) => {
         room: roomKey,
         timestamp: serverTimestamp()
     });
-
-    scrollToBottom();
 });
 
 function loadMessagesFeed() {
@@ -502,11 +512,12 @@ function loadMessagesFeed() {
                 const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
                 
                 if (isVideo) {
+                    // Stripped 'controls' so it acts like a loop GIF with no hover overlay
                     contentHTML = `
-                        <video src="${mediaPath}" autoplay loop muted playsinline controls style="max-width:280px; width:100%; border-radius:8px; display:block;">
+                        <video src="${mediaPath}" autoplay loop muted playsinline style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none;">
                         </video>`;
                 } else {
-                    contentHTML = `<img src="${mediaPath}" style="max-width:240px; width:100%; border-radius:8px; display:block;" />`;
+                    contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
                 }
             } else {
                 contentHTML = escapeHTML(msg.text || "");
