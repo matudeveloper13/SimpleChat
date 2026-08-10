@@ -274,7 +274,7 @@ document.querySelectorAll(".preset-avatar").forEach(el => {
     });
 });
 
-// --- NEW FEATURE: Custom PFP Upload Input & Handler ---
+// --- CUSTOM PFP SQUARE BUTTON & FILE HANDLER ---
 const customAvatarFileInput = document.createElement("input");
 customAvatarFileInput.type = "file";
 customAvatarFileInput.accept = "image/png, image/jpeg, image/jpg";
@@ -285,9 +285,9 @@ const avatarModalContent = document.querySelector("#avatar-selector-overlay .mod
 if (avatarModalContent) {
     const uploadCustomBtn = document.createElement("button");
     uploadCustomBtn.type = "button";
-    uploadCustomBtn.className = "btn btn-secondary full-width";
-    uploadCustomBtn.style.marginTop = "15px";
-    uploadCustomBtn.textContent = "Upload Custom PFP";
+    uploadCustomBtn.className = "btn btn-secondary";
+    uploadCustomBtn.style.cssText = "width: 100%; height: 44px; border-radius: 6px; margin-top: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+    uploadCustomBtn.textContent = "Profile Picture";
     
     uploadCustomBtn.addEventListener("click", () => {
         if (currentUsername === "Guest") {
@@ -306,9 +306,35 @@ customAvatarFileInput.addEventListener("change", (e) => {
 
     const reader = new FileReader();
     reader.onload = async function (event) {
-        const base64Image = event.target.result;
-        await applyNewAvatar(base64Image);
-        customAvatarFileInput.value = "";
+        const img = new Image();
+        img.onload = async function () {
+            // Automatically resize/compress and center-crop into a fixed small square avatar dimension (150x150)
+            const canvas = document.createElement("canvas");
+            const size = 150;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+
+            let width = img.width;
+            let height = img.height;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (width > height) {
+                offsetX = (width - height) / 2;
+                width = height;
+            } else {
+                offsetY = (height - width) / 2;
+                height = width;
+            }
+
+            ctx.drawImage(img, offsetX, offsetY, width, height, 0, 0, size, size);
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+            await applyNewAvatar(compressedBase64);
+            customAvatarFileInput.value = "";
+        };
+        img.src = event.target.result;
     };
     reader.readAsDataURL(file);
 });
@@ -575,13 +601,6 @@ function loadMessagesFeed() {
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 250;
 
-        // Fetch latest users database mapping to dynamically sync old/new PFPs bug fix
-        const userAvatarsMap = {};
-        try {
-            const userDocsSnap = await getDoc(doc(db, "users", currentUsername)); // lightweight check or store maps if needed
-            // To be robust across multiple users without heavy reads, we fallback to msg.avatar or fetch user profile per sender dynamically if cached.
-        } catch (e) {}
-
         messagesContainer.innerHTML = "";
         
         for (const docSnap of snapshot.docs) {
@@ -622,7 +641,6 @@ function loadMessagesFeed() {
                 contentHTML = sanitizeMessageHTML(msg.text || "");
             }
 
-            // --- BUG FIX: Always reflect the user's latest active avatar dynamically ---
             let effectiveAvatar = msg.avatar || 'avatar1.png';
             if (isSent && myMiniAvatar && myMiniAvatar.src) {
                 effectiveAvatar = myMiniAvatar.src;
