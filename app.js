@@ -26,10 +26,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Hidden file input for photo/video upload
+// Hidden file input restricted ONLY to photos
 const fileInput = document.createElement("input");
 fileInput.type = "file";
-fileInput.accept = "image/*,video/*";
+fileInput.accept = "image/png, image/jpeg, image/jpg, image/gif, image/webp";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
@@ -123,14 +123,14 @@ function formatMessageTime(timestamp) {
     return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
 }
 
-// Security Filter
-function escapeHTML(str) {
-    const p = document.createElement("p");
-    p.textContent = str;
-    return p.innerHTML;
+// Security Filter (Allows safe custom <img> emoji tags through)
+function sanitizeMessageHTML(str) {
+    const temp = document.createElement("div");
+    temp.textContent = str;
+    let safeText = temp.innerHTML;
+    return safeText.replace(/&lt;img src="(.*?)" class="inline-avatar-emoji" \/&gt;/g, '<img src="$1" class="inline-avatar-emoji" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; display:inline-block; margin:0 2px;" />');
 }
 
-// Smooth scroll to bottom without page jumping
 function scrollToBottom() {
     if (messagesContainer) {
         messagesContainer.scrollTo({
@@ -286,7 +286,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Media Uploads
+// DM Photo Upload with strict validation warning
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -294,7 +294,17 @@ photoBtn?.addEventListener("click", () => {
 
 fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
-    if (!file || currentUsername === "Guest" || currentChatRoom === "global") return;
+    if (!file) return;
+
+    // Strict photo type check
+    const validImageTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
+    if (!validImageTypes.includes(file.type)) {
+        alert("ONLY PHOTOS! Please select a valid photo file (PNG, JPG, or GIF).");
+        fileInput.value = "";
+        return;
+    }
+
+    if (currentUsername === "Guest" || currentChatRoom === "global") return;
 
     try {
         const fileRef = ref(storage, `chat_uploads/${Date.now()}_${file.name}`);
@@ -305,13 +315,13 @@ fileInput.addEventListener("change", async (e) => {
         try {
             const snap = await getDoc(doc(db, "users", currentUsername));
             if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-        } catch(e){}
+        } catch(err){}
 
         const targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
 
         await addDoc(collection(db, "messages"), {
             mediaUrl: downloadURL,
-            mediaType: file.type.startsWith("video") ? "video" : "image",
+            mediaType: "image",
             username: currentUsername,
             avatar: userAvatar,
             room: targetRoom,
@@ -319,7 +329,7 @@ fileInput.addEventListener("change", async (e) => {
         });
 
     } catch (err) {
-        alert("Failed to upload media: " + err.message);
+        alert("Failed to upload photo: " + err.message);
     }
     fileInput.value = "";
 });
@@ -342,41 +352,28 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
-    // Avatar Emojis (Sends avatar image directly as an emoji in chat)
+    // Avatar Small Emojis (Inserts as tiny 24px round inline emoji into text input)
     const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
     avatars.forEach(av => {
         const imgThumb = document.createElement("img");
         imgThumb.src = av;
-        imgThumb.className = "discord-picker-emoji-thumb avatar-picker-thumb";
-        imgThumb.style.width = "28px";
-        imgThumb.style.height = "28px";
+        imgThumb.className = "discord-picker-emoji-thumb";
+        imgThumb.style.width = "26px";
+        imgThumb.style.height = "26px";
         imgThumb.style.borderRadius = "50%";
+        imgThumb.style.objectFit = "cover";
         imgThumb.style.cursor = "pointer";
-        imgThumb.addEventListener("click", async () => {
+
+        imgThumb.addEventListener("click", () => {
+            // Inserts inline image tag
+            messageInput.value += `<img src="${av}" class="inline-avatar-emoji" />`;
+            messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
-            if (currentUsername === "Guest") return;
-
-            let userAvatar = "avatar1.png";
-            try {
-                const snap = await getDoc(doc(db, "users", currentUsername));
-                if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-            } catch(e){}
-
-            const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-
-            await addDoc(collection(db, "messages"), {
-                mediaUrl: av,
-                mediaType: "image",
-                username: currentUsername,
-                avatar: userAvatar,
-                room: roomKey,
-                timestamp: serverTimestamp()
-            });
         });
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // Video / GIF MP4 Emojis (Acts as loop GIF, no controls/hover pause)
+    // Video / GIF MP4 Emojis (Disabled pointer events so hovering can't stop video)
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const vidThumb = document.createElement("video");
@@ -429,7 +426,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Typing Indicators & Sending Messages
+// Typing Indicators & Message Logic
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -512,22 +509,22 @@ function loadMessagesFeed() {
                 const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
                 
                 if (isVideo) {
-                    // Stripped 'controls' so it acts like a loop GIF with no hover overlay
+                    // Fully disabled hover/click controls so it acts 100% like a GIF
                     contentHTML = `
-                        <video src="${mediaPath}" autoplay loop muted playsinline style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none;">
+                        <video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;">
                         </video>`;
                 } else {
                     contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
                 }
             } else {
-                contentHTML = escapeHTML(msg.text || "");
+                contentHTML = sanitizeMessageHTML(msg.text || "");
             }
 
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
-                        <span class="msg-author">${escapeHTML(msg.username)}</span>
+                        <span class="msg-author">${sanitizeMessageHTML(msg.username)}</span>
                         <span class="msg-time">${readableTime}</span>
                     </div>
                     <div class="msg-bubble">${contentHTML}</div>
@@ -673,7 +670,7 @@ async function loadFriendsAndRequests() {
         requests.forEach(reqUser => {
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
-            row.innerHTML = `<span>${escapeHTML(reqUser)}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
+            row.innerHTML = `<span>${sanitizeMessageHTML(reqUser)}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
             row.querySelector("button").addEventListener("click", () => acceptFriendRequest(reqUser));
             pendingRequestsContainer.appendChild(row);
         });
@@ -685,7 +682,7 @@ async function loadFriendsAndRequests() {
         friends.forEach(friend => {
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
-            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${escapeHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
+            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
         });
