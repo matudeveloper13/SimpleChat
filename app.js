@@ -274,18 +274,41 @@ document.querySelectorAll(".preset-avatar").forEach(el => {
     });
 });
 
-// --- CUSTOM PFP SQUARE BUTTON & FILE HANDLER ---
+// --- SINGLE CLEAN SQUARE PROFILE PICTURE BUTTON & TIKTOK-STYLE CROP PREVIEW MODAL ---
 const customAvatarFileInput = document.createElement("input");
 customAvatarFileInput.type = "file";
 customAvatarFileInput.accept = "image/png, image/jpeg, image/jpg";
 customAvatarFileInput.style.display = "none";
 document.body.appendChild(customAvatarFileInput);
 
+// Build TikTok-style crop preview overlay dynamically to prevent duplicates
+const cropOverlay = document.createElement("div");
+cropOverlay.id = "crop-preview-overlay";
+cropOverlay.className = "modal-overlay hidden";
+cropOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999;";
+cropOverlay.innerHTML = `
+    <div class="modal" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center; max-width: 320px; width: 90%; border: 1px solid var(--border-color);">
+        <h3 style="margin-bottom: 15px; color: var(--text-color);">Position Your PFP</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Drag/pan or scroll to zoom your image inside the circle.</p>
+        <div id="crop-viewport" style="position: relative; width: 200px; height: 200px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 50%; border: 3px solid var(--primary-color); cursor: grab; background: #000;">
+            <img id="crop-source-img" style="position: absolute; top: 0; left: 0; user-select: none; pointer-events: none; max-width: none;" />
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="cancel-crop-btn" class="btn btn-secondary" style="flex: 1; height: 40px;">Cancel</button>
+            <button id="confirm-crop-btn" class="btn btn-primary" style="flex: 1; height: 40px;">Save PFP</button>
+        </div>
+    </div>
+`;
+document.body.appendChild(cropOverlay);
+
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
+    // Remove any existing custom upload buttons to guarantee no duplicates
+    avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
+
     const uploadCustomBtn = document.createElement("button");
     uploadCustomBtn.type = "button";
-    uploadCustomBtn.className = "btn btn-secondary";
+    uploadCustomBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
     uploadCustomBtn.style.cssText = "width: 100%; height: 44px; border-radius: 6px; margin-top: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;";
     uploadCustomBtn.textContent = "Profile Picture";
     
@@ -300,43 +323,119 @@ if (avatarModalContent) {
     avatarModalContent.insertBefore(uploadCustomBtn, closeAvatarSelector);
 }
 
+let activeImageObj = null;
+let imgX = 0, imgY = 0, imgScale = 1;
+let isDragging = false;
+let startX = 0, startY = 0;
+
+const cropViewport = document.getElementById("crop-viewport");
+const cropSourceImg = document.getElementById("crop-source-img");
+
 customAvatarFileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async function (event) {
-        const img = new Image();
-        img.onload = async function () {
-            // Automatically resize/compress and center-crop into a fixed small square avatar dimension (150x150)
-            const canvas = document.createElement("canvas");
-            const size = 150;
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d");
-
-            let width = img.width;
-            let height = img.height;
-            let offsetX = 0;
-            let offsetY = 0;
-
-            if (width > height) {
-                offsetX = (width - height) / 2;
-                width = height;
-            } else {
-                offsetY = (height - width) / 2;
-                height = width;
-            }
-
-            ctx.drawImage(img, offsetX, offsetY, width, height, 0, 0, size, size);
-            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
-
-            await applyNewAvatar(compressedBase64);
+    reader.onload = function (event) {
+        activeImageObj = new Image();
+        activeImageObj.onload = function () {
+            cropSourceImg.src = activeImageObj.src;
+            
+            // Initial positioning to fit nicely inside the 200x200 viewport circle
+            imgScale = Math.max(200 / activeImageObj.width, 200 / activeImageObj.height);
+            imgX = (200 - (activeImageObj.width * imgScale)) / 2;
+            imgY = (200 - (activeImageObj.height * imgScale)) / 2;
+            
+            updateCropImageTransform();
+            avatarSelectorOverlay.classList.add("hidden");
+            cropOverlay.classList.remove("hidden");
             customAvatarFileInput.value = "";
         };
-        img.src = event.target.result;
+        activeImageObj.src = event.target.result;
     };
     reader.readAsDataURL(file);
+});
+
+function updateCropImageTransform() {
+    if (!cropSourceImg) return;
+    cropSourceImg.style.width = `${activeImageObj.width * imgScale}px`;
+    cropSourceImg.style.height = `${activeImageObj.height * imgScale}px`;
+    cropSourceImg.style.transform = `translate(${imgX}px, ${imgY}px)`;
+}
+
+// Dragging and Pinch/Zoom functionality for TikTok-like cropping
+cropViewport?.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    startX = e.clientX - imgX;
+    startY = e.clientY - imgY;
+    cropViewport.style.cursor = "grabbing";
+});
+
+window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    imgX = e.clientX - startX;
+    imgY = e.clientY - startY;
+    updateCropImageTransform();
+});
+
+window.addEventListener("mouseup", () => {
+    isDragging = false;
+    if (cropViewport) cropViewport.style.cursor = "grab";
+});
+
+cropViewport?.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+        isDragging = true;
+        startX = e.touches[0].clientX - imgX;
+        startY = e.touches[0].clientY - imgY;
+    }
+});
+
+window.addEventListener("touchmove", (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    imgX = e.touches[0].clientX - startX;
+    imgY = e.touches[0].clientY - startY;
+    updateCropImageTransform();
+});
+
+window.addEventListener("touchend", () => {
+    isDragging = false;
+});
+
+cropViewport?.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    imgScale *= zoomFactor;
+    updateCropImageTransform();
+}, { passive: false });
+
+document.getElementById("cancel-crop-btn")?.addEventListener("click", () => {
+    cropOverlay.classList.add("hidden");
+});
+
+document.getElementById("confirm-crop-btn")?.addEventListener("click", async () => {
+    const canvas = document.createElement("canvas");
+    const outputSize = 150;
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    const ctx = canvas.getContext("2d");
+
+    // Map the viewport circle bounds to final cropped canvas image
+    ctx.drawImage(
+        activeImageObj,
+        -imgX / imgScale,
+        -imgY / imgScale,
+        200 / imgScale,
+        200 / imgScale,
+        0,
+        0,
+        outputSize,
+        outputSize
+    );
+
+    const finalBase64 = canvas.toDataURL("image/jpeg", 0.9);
+    cropOverlay.classList.add("hidden");
+    await applyNewAvatar(finalBase64);
 });
 
 async function applyNewAvatar(avatarUrl) {
