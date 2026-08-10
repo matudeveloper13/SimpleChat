@@ -99,9 +99,14 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
 
-// Inject typing indicator animated dots styling dynamically
+// Inject typing indicator animated dots styling dynamically with global visibility guarantees
 const typingStyleTag = document.createElement("style");
 typingStyleTag.innerHTML = `
+    #typing-indicator-box {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
     .typing-dots span {
         height: 6px;
         width: 6px;
@@ -407,6 +412,25 @@ window.addEventListener("mouseup", () => {
     if (cropViewport) cropViewport.style.cursor = "grab";
 });
 
+cropViewport?.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+        isDragging = true;
+        startX = e.touches[0].clientX - imgX;
+        startY = e.touches[0].clientY - imgY;
+    }
+}, { passive: true });
+
+window.addEventListener("touchmove", (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    imgX = e.touches[0].clientX - startX;
+    imgY = e.touches[0].clientY - startY;
+    updateCropImageTransform();
+}, { passive: true });
+
+window.addEventListener("touchend", () => {
+    isDragging = false;
+});
+
 cropViewport?.addEventListener("wheel", (e) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
@@ -568,11 +592,13 @@ if (discordEmojiGrid) {
             if (currentUsername === "Guest") return;
 
             const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+            const recipient = currentChatRoom === "global" ? null : currentChatRoom;
             await addDoc(collection(db, "messages"), {
                 mediaUrl: videoSrc,
                 mediaType: "video",
                 username: currentUsername,
                 room: roomKey,
+                recipient: recipient,
                 timestamp: serverTimestamp()
             });
         });
@@ -617,6 +643,7 @@ messageForm?.addEventListener("submit", async (e) => {
     if (currentUsername === "Guest") return;
 
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+    const recipient = currentChatRoom === "global" ? null : currentChatRoom;
 
     if (selectedImageFile && messageInput.value.includes("(image)")) {
         const fileToUpload = selectedImageFile;
@@ -639,6 +666,7 @@ messageForm?.addEventListener("submit", async (e) => {
                     mediaType: "image",
                     username: currentUsername,
                     room: roomKey,
+                    recipient: recipient,
                     timestamp: serverTimestamp()
                 });
             } else {
@@ -665,6 +693,7 @@ messageForm?.addEventListener("submit", async (e) => {
         text,
         username: currentUsername,
         room: roomKey,
+        recipient: recipient,
         timestamp: serverTimestamp()
     });
 });
@@ -703,7 +732,9 @@ function loadMessagesFeed() {
                 matchesRoom = !msg.room || msg.room === "global";
             } else {
                 const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
-                matchesRoom = msg.room === expectedDM;
+                matchesRoom = msg.room === expectedDM || 
+                              (msg.recipient === currentUsername && msg.username === currentChatRoom) || 
+                              (msg.recipient === currentChatRoom && msg.username === currentUsername);
             }
 
             if (!matchesRoom) continue;
@@ -762,7 +793,10 @@ function loadMessagesFeed() {
 
         snap.forEach(d => {
             const data = d.data();
-            if (data.room === currentRoomKey && data.username && data.username !== currentUsername) {
+            const matchesRoom = (data.room === currentRoomKey) || 
+                                (currentChatRoom !== "global" && (data.room === `${currentChatRoom}_${currentUsername}` || data.room === `${currentUsername}_${currentChatRoom}`));
+
+            if (matchesRoom && data.username && data.username !== currentUsername) {
                 if (data.lastTyped) {
                     const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
                     if (new Date() - typedDate < 5000) {
@@ -786,8 +820,10 @@ function loadMessagesFeed() {
 
             typingTextLabel.innerHTML = `${typingMessageText} <span class="typing-dots" style="display:inline-block; margin-left:4px;"><span></span><span></span><span></span></span>`;
             typingIndicatorBox.classList.remove("hidden");
+            typingIndicatorBox.style.display = "flex";
         } else {
             typingIndicatorBox.classList.add("hidden");
+            typingIndicatorBox.style.display = "none";
         }
     });
 }
@@ -910,7 +946,8 @@ async function loadFriendsAndRequests() {
 function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
-    exitDmBtn.classList.remove("hidden");
+    exitDmBtn.classList.add("hidden"); // Kept hidden or controlled cleanly by DOM states
+    exitDmBtn.style.display = "inline-block";
     if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
