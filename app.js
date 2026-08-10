@@ -1,7 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { 
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+    signOut, onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+    getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { 
+    getStorage, ref, uploadBytes, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAjrDMHeulPmO-HbZ43-TlD0-sgAcpXFcQ",
@@ -18,12 +26,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// Hidden file input for photo/video upload
 const fileInput = document.createElement("input");
 fileInput.type = "file";
-fileInput.accept = "image/*";
+fileInput.accept = "image/*,video/*";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
+// DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const authOverlay = document.getElementById("auth-overlay");
@@ -81,13 +91,16 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
 
-const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
-const makeSecurePass = (pass) => `sc_${pass}_pad123`;
-
-let currentUsername = "yanabanaya";
+// State
+let currentUsername = "Guest";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let typingTimeout = null;
+let unsubscribeMessages = null;
+let unsubscribeTyping = null;
+
+const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
+const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
 function formatMessageTime(timestamp) {
     let date;
@@ -107,21 +120,30 @@ function formatMessageTime(timestamp) {
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     
-    if (isToday) {
-        return `Today at ${timeStr}`;
-    } else {
-        return `${monthStr}, ${timeStr}`;
+    return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
+}
+
+// XSS Prevention
+function escapeHTML(str) {
+    const p = document.createElement("p");
+    p.textContent = str;
+    return p.innerHTML;
+}
+
+// Smooth Internal Scroll (Prevents full page jumps)
+function scrollToBottom() {
+    if (messagesContainer) {
+        messagesContainer.scrollTo({
+            top: messagesContainer.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 }
 
+// UI Navigation
 themeToggleBtn?.addEventListener("click", () => {
-    if (document.body.classList.contains("dark-mode")) {
-        document.body.classList.remove("dark-mode");
-        themeToggleBtn.textContent = "☀️";
-    } else {
-        document.body.classList.add("dark-mode");
-        themeToggleBtn.textContent = "🌙";
-    }
+    document.body.classList.toggle("dark-mode");
+    themeToggleBtn.textContent = document.body.classList.contains("dark-mode") ? "🌙" : "☀️";
 });
 
 navFriendsBtn?.addEventListener("click", () => {
@@ -139,7 +161,7 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
-    photoBtn.classList.add("hidden"); // Hide photo button in global chat
+    photoBtn.classList.add("hidden");
     loadMessagesFeed();
 });
 
@@ -161,6 +183,7 @@ authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidd
 closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
 logoutBtn?.addEventListener("click", () => signOut(auth));
 
+// Authentication
 registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("register-username").value.trim();
@@ -223,8 +246,10 @@ onAuthStateChanged(auth, async (user) => {
         authModalBtn.classList.remove("hidden");
         logoutBtn.classList.add("hidden");
     }
+    loadMessagesFeed();
 });
 
+// Profiles
 topLeftProfile?.addEventListener("click", () => {
     if (currentUsername === "Guest") {
         authOverlay.classList.remove("hidden");
@@ -261,7 +286,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Photo Button triggers gallery file selection (Only active in DMs)
+// Image / File Uploads
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -285,46 +310,99 @@ fileInput.addEventListener("change", async (e) => {
         const targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
 
         await addDoc(collection(db, "messages"), {
-            text: `<img src="${downloadURL}" class="inline-chat-video-normal" style="max-width:220px; border-radius:8px;" />`,
+            mediaUrl: downloadURL,
+            mediaType: file.type.startsWith("video") ? "video" : "image",
             username: currentUsername,
             avatar: userAvatar,
             room: targetRoom,
             timestamp: serverTimestamp()
         });
 
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        scrollToBottom();
     } catch (err) {
-        alert("Failed to upload photo: " + err.message);
+        alert("Failed to upload media: " + err.message);
     }
     fileInput.value = "";
 });
 
-const avatarFiles = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
-const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
+// Build Emoji & MP4 Video/GIF Pad
+if (discordEmojiGrid) {
+    discordEmojiGrid.innerHTML = "";
 
-avatarFiles.forEach(av => {
-    const imgThumb = document.createElement("img");
-    imgThumb.src = av;
-    imgThumb.className = "discord-picker-avatar-thumb";
-    imgThumb.addEventListener("click", () => {
-        messageInput.value += ` <img src="${av}" class="msg-avatar-img" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /> `;
-        messageInput.focus();
-        discordEmojiPicker.classList.add("hidden");
+    // Standard Emojis
+    const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
+    basicEmojis.forEach(em => {
+        const emojiDiv = document.createElement("div");
+        emojiDiv.className = "discord-picker-emoji-thumb";
+        emojiDiv.textContent = em;
+        emojiDiv.addEventListener("click", () => {
+            messageInput.value += em;
+            messageInput.focus();
+            discordEmojiPicker.classList.add("hidden");
+        });
+        discordEmojiGrid.appendChild(emojiDiv);
     });
-    discordEmojiGrid.appendChild(imgThumb);
-});
 
-basicEmojis.forEach(em => {
-    const emojiDiv = document.createElement("div");
-    emojiDiv.className = "discord-picker-emoji-thumb";
-    emojiDiv.textContent = em;
-    emojiDiv.addEventListener("click", () => {
-        messageInput.value += em;
-        messageInput.focus();
-        discordEmojiPicker.classList.add("hidden");
+    // Small Avatar Emojis
+    const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
+    avatars.forEach(av => {
+        const imgThumb = document.createElement("img");
+        imgThumb.src = av;
+        imgThumb.className = "discord-picker-emoji-thumb avatar-picker-thumb";
+        imgThumb.style.width = "28px";
+        imgThumb.style.height = "28px";
+        imgThumb.style.borderRadius = "50%";
+        imgThumb.style.cursor = "pointer";
+        imgThumb.addEventListener("click", () => {
+            messageInput.value += `:${av.split('.')[0]}: `;
+            messageInput.focus();
+            discordEmojiPicker.classList.add("hidden");
+        });
+        discordEmojiGrid.appendChild(imgThumb);
     });
-    discordEmojiGrid.appendChild(emojiDiv);
-});
+
+    // Video / GIF MP4 Emojis
+    const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
+    projectVideos.forEach(videoSrc => {
+        const vidThumb = document.createElement("video");
+        vidThumb.src = videoSrc;
+        vidThumb.autoplay = true;
+        vidThumb.loop = true;
+        vidThumb.muted = true;
+        vidThumb.playsInline = true;
+        vidThumb.className = "discord-picker-emoji-thumb video-gif-thumb";
+        vidThumb.style.width = "36px";
+        vidThumb.style.height = "36px";
+        vidThumb.style.objectFit = "cover";
+        vidThumb.style.borderRadius = "6px";
+        vidThumb.style.cursor = "pointer";
+
+        vidThumb.addEventListener("click", async () => {
+            discordEmojiPicker.classList.add("hidden");
+            if (currentUsername === "Guest") return;
+
+            let userAvatar = "avatar1.png";
+            try {
+                const snap = await getDoc(doc(db, "users", currentUsername));
+                if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
+            } catch(e){}
+
+            const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+
+            await addDoc(collection(db, "messages"), {
+                mediaUrl: videoSrc,
+                mediaType: "video",
+                username: currentUsername,
+                avatar: userAvatar,
+                room: roomKey,
+                timestamp: serverTimestamp()
+            });
+
+            scrollToBottom();
+        });
+        discordEmojiGrid.appendChild(vidThumb);
+    });
+}
 
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -332,11 +410,12 @@ emojiBtn?.addEventListener("click", (e) => {
 });
 
 document.addEventListener("click", (e) => {
-    if (!discordEmojiPicker.contains(e.target) && e.target !== emojiBtn && e.target !== photoBtn) {
+    if (discordEmojiPicker && !discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
         discordEmojiPicker.classList.add("hidden");
     }
 });
 
+// Typing Indicators & Message Posting
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -375,30 +454,25 @@ messageForm?.addEventListener("submit", async (e) => {
     try {
         await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
     } catch(e){}
-    
-    let targetRoom = "global";
-    if (currentChatRoom !== "global") {
-        targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
-    }
 
     await addDoc(collection(db, "messages"), {
         text,
         username: currentUsername,
         avatar: userAvatar,
-        room: targetRoom,
+        room: roomKey,
         timestamp: serverTimestamp()
     });
 
-    // Force scroll smoothly to bottom instantly when sending your own message
-    setTimeout(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 50);
+    scrollToBottom();
 });
 
 function loadMessagesFeed() {
+    if (unsubscribeMessages) unsubscribeMessages();
+    if (unsubscribeTyping) unsubscribeTyping();
+
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    onSnapshot(q, (snapshot) => {
-        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 200;
+    unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 250;
 
         messagesContainer.innerHTML = "";
         snapshot.forEach(docSnap => {
@@ -420,14 +494,30 @@ function loadMessagesFeed() {
             
             const readableTime = formatMessageTime(msg.timestamp);
 
+            let contentHTML = "";
+            if (msg.mediaUrl || msg.imageUrl) {
+                const mediaPath = msg.mediaUrl || msg.imageUrl;
+                const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
+                
+                if (isVideo) {
+                    contentHTML = `
+                        <video src="${mediaPath}" autoplay loop muted playsinline controls style="max-width:280px; width:100%; border-radius:8px; display:block;">
+                        </video>`;
+                } else {
+                    contentHTML = `<img src="${mediaPath}" style="max-width:240px; width:100%; border-radius:8px; display:block;" />`;
+                }
+            } else {
+                contentHTML = escapeHTML(msg.text || "");
+            }
+
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
-                        <span class="msg-author">${msg.username}</span>
+                        <span class="msg-author">${escapeHTML(msg.username)}</span>
                         <span class="msg-time">${readableTime}</span>
                     </div>
-                    <div class="msg-bubble">${msg.text}</div>
+                    <div class="msg-bubble">${contentHTML}</div>
                 </div>
             `;
 
@@ -438,14 +528,13 @@ function loadMessagesFeed() {
             messagesContainer.appendChild(div);
         });
 
-        // Only auto-scroll if user was already at the bottom or if it's their own message
         if (isNearBottom) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            scrollToBottom();
         }
     });
 
     const typingQuery = query(collection(db, "typing"));
-    onSnapshot(typingQuery, (snap) => {
+    unsubscribeTyping = onSnapshot(typingQuery, (snap) => {
         let activeTypingUsers = [];
         const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
 
@@ -464,11 +553,9 @@ function loadMessagesFeed() {
         });
 
         if (activeTypingUsers.length > 0) {
-            if (activeTypingUsers.length === 1) {
-                typingTextLabel.textContent = `@${activeTypingUsers[0]} is typing`;
-            } else {
-                typingTextLabel.textContent = `Multiple users are typing`;
-            }
+            typingTextLabel.textContent = activeTypingUsers.length === 1 
+                ? `@${activeTypingUsers[0]} is typing...` 
+                : `Multiple users are typing...`;
             typingIndicatorBox.classList.remove("hidden");
         } else {
             typingIndicatorBox.classList.add("hidden");
@@ -476,8 +563,7 @@ function loadMessagesFeed() {
     });
 }
 
-loadMessagesFeed();
-
+// User Profiles & Friend Requests
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
     viewUserName.textContent = username;
@@ -545,7 +631,7 @@ sendFriendRequestBtn?.addEventListener("click", async () => {
             friendActionMsg.textContent = "User not found.";
             return;
         }
-        await updateDoc(doc(db, "users", targetName), {
+        await updateDoc(doc(doc(db, "users", targetName)), {
             friendRequests: arrayUnion(currentUsername)
         });
         friendActionMsg.textContent = `Friend request sent to ${targetName}!`;
@@ -574,7 +660,7 @@ async function loadFriendsAndRequests() {
         requests.forEach(reqUser => {
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
-            row.innerHTML = `<span>${reqUser}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
+            row.innerHTML = `<span>${escapeHTML(reqUser)}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
             row.querySelector("button").addEventListener("click", () => acceptFriendRequest(reqUser));
             pendingRequestsContainer.appendChild(row);
         });
@@ -586,7 +672,7 @@ async function loadFriendsAndRequests() {
         friends.forEach(friend => {
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
-            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${friend}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
+            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${escapeHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
         });
@@ -597,27 +683,11 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
-    photoBtn.classList.remove("hidden"); // Show photo button exclusively in DMs
+    photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
-    messagesContainer.innerHTML = `
-        <div class="msg received">
-            <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
-            <div class="msg-content">
-                <div class="msg-header">
-                    <span class="msg-author">System</span>
-                    <span class="msg-time">Just now</span>
-                </div>
-                <div class="msg-bubble">
-                    🔒 Direct Message conversation started with @${friendName}. You can chat or share photos using the 📷 button.
-                </div>
-            </div>
-        </div>
-    `;
-    setTimeout(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 50);
+    loadMessagesFeed();
 }
 
 async function acceptFriendRequest(friendName) {
