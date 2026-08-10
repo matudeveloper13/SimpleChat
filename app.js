@@ -123,12 +123,12 @@ function formatMessageTime(timestamp) {
     return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
 }
 
-// Security Filter (Allows safe custom <img> emoji tags through)
 function sanitizeMessageHTML(str) {
     const temp = document.createElement("div");
     temp.textContent = str;
     let safeText = temp.innerHTML;
-    return safeText.replace(/&lt;img src="(.*?)" class="inline-avatar-emoji" \/&gt;/g, '<img src="$1" class="inline-avatar-emoji" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; display:inline-block; margin:0 2px;" />');
+    // Renders custom avatar emojis in text as tiny round 24px emojis
+    return safeText.replace(/&lt;img src="(.*?)" class="inline-avatar-emoji" \/&gt;/g, '<img src="$1" class="inline-avatar-emoji" />');
 }
 
 function scrollToBottom() {
@@ -140,7 +140,7 @@ function scrollToBottom() {
     }
 }
 
-// UI Navigation
+// Navigation
 themeToggleBtn?.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
     themeToggleBtn.textContent = document.body.classList.contains("dark-mode") ? "🌙" : "☀️";
@@ -161,7 +161,7 @@ exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
-    photoBtn.classList.add("hidden");
+    if (photoBtn) photoBtn.classList.add("hidden");
     loadMessagesFeed();
 });
 
@@ -183,7 +183,7 @@ authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidd
 closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
 logoutBtn?.addEventListener("click", () => signOut(auth));
 
-// Authentication
+// Auth
 registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("register-username").value.trim();
@@ -249,7 +249,7 @@ onAuthStateChanged(auth, async (user) => {
     loadMessagesFeed();
 });
 
-// Profiles
+// Profile Modal
 topLeftProfile?.addEventListener("click", () => {
     if (currentUsername === "Guest") {
         authOverlay.classList.remove("hidden");
@@ -299,7 +299,7 @@ fileInput.addEventListener("change", async (e) => {
     // Strict photo type check
     const validImageTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
     if (!validImageTypes.includes(file.type)) {
-        alert("ONLY PHOTOS! Please select a valid photo file (PNG, JPG, or GIF).");
+        alert("ONLY PHOTOS! Please select a PNG, JPG, or GIF image.");
         fileInput.value = "";
         return;
     }
@@ -329,16 +329,16 @@ fileInput.addEventListener("change", async (e) => {
         });
 
     } catch (err) {
-        alert("Failed to upload photo: " + err.message);
+        alert("Failed to send photo: " + err.message);
     }
     fileInput.value = "";
 });
 
-// Build Emoji, Avatars, and MP4 Video/GIF Pad
+// Build Emoji, Avatar Emojis & MP4 GIF Pad
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
 
-    // Standard Text Emojis
+    // 1. Text Emojis
     const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
@@ -352,7 +352,7 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
-    // Avatar Small Emojis (Inserts as tiny 24px round inline emoji into text input)
+    // 2. Avatar Emojis (Inserts small 24px round inline emoji into message)
     const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
     avatars.forEach(av => {
         const imgThumb = document.createElement("img");
@@ -365,7 +365,6 @@ if (discordEmojiGrid) {
         imgThumb.style.cursor = "pointer";
 
         imgThumb.addEventListener("click", () => {
-            // Inserts inline image tag
             messageInput.value += `<img src="${av}" class="inline-avatar-emoji" />`;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
@@ -373,7 +372,7 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // Video / GIF MP4 Emojis (Disabled pointer events so hovering can't stop video)
+    // 3. MP4 GIFs (Disabled hover controls)
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const vidThumb = document.createElement("video");
@@ -426,7 +425,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Typing Indicators & Message Logic
+// Typing & Messages
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -509,12 +508,17 @@ function loadMessagesFeed() {
                 const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
                 
                 if (isVideo) {
-                    // Fully disabled hover/click controls so it acts 100% like a GIF
                     contentHTML = `
                         <video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;">
                         </video>`;
                 } else {
-                    contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
+                    // Check if media is a small custom avatar emoji or full photo upload
+                    const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
+                    if (isAvatarEmoji) {
+                        contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" />`;
+                    } else {
+                        contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
+                    }
                 }
             } else {
                 contentHTML = sanitizeMessageHTML(msg.text || "");
@@ -693,7 +697,7 @@ function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
-    photoBtn.classList.remove("hidden");
+    if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     
