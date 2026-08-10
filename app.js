@@ -128,6 +128,7 @@ let currentChatRoom = "global";
 let typingTimeout = null;
 let unsubscribeMessages = null;
 let unsubscribeTyping = null;
+let userAvatarsCache = {};
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -270,6 +271,7 @@ onAuthStateChanged(auth, async (user) => {
             if (data.avatar) {
                 myMiniAvatar.src = data.avatar;
                 editModalAvatar.src = data.avatar;
+                userAvatarsCache[currentUsername] = data.avatar;
             }
             if (data.bio) bioInput.value = data.bio;
         }
@@ -435,14 +437,34 @@ document.getElementById("confirm-crop-btn")?.addEventListener("click", async () 
         outputSize
     );
 
-    const finalBase64 = canvas.toDataURL("image/jpeg", 0.9);
-    cropOverlay.classList.add("hidden");
-    await applyNewAvatar(finalBase64);
+    canvas.toBlob(async (blob) => {
+        cropOverlay.classList.add("hidden");
+        if (!blob) return;
+
+        const formData = new FormData();
+        formData.append("image", blob, "pfp.jpg");
+
+        try {
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                await applyNewAvatar(data.data.url);
+            } else {
+                alert("Failed to upload custom PFP: " + (data.error?.message || "unknown error"));
+            }
+        } catch (err) {
+            alert("Network error uploading PFP: " + err.message);
+        }
+    }, "image/jpeg", 0.9);
 });
 
 async function applyNewAvatar(avatarUrl) {
     myMiniAvatar.src = avatarUrl;
     editModalAvatar.src = avatarUrl;
+    userAvatarsCache[currentUsername] = avatarUrl;
     avatarSelectorOverlay.classList.add("hidden");
 
     if (currentUsername !== "Guest") {
@@ -545,18 +567,11 @@ if (discordEmojiGrid) {
             discordEmojiPicker.classList.add("hidden");
             if (currentUsername === "Guest") return;
 
-            let userAvatar = "avatar1.png";
-            try {
-                const snap = await getDoc(doc(db, "users", currentUsername));
-                if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-            } catch(err){}
-
             const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
             await addDoc(collection(db, "messages"), {
                 mediaUrl: videoSrc,
                 mediaType: "video",
                 username: currentUsername,
-                avatar: userAvatar,
                 room: roomKey,
                 timestamp: serverTimestamp()
             });
@@ -603,12 +618,6 @@ messageForm?.addEventListener("submit", async (e) => {
 
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
 
-    let userAvatar = "avatar1.png";
-    try {
-        const snap = await getDoc(doc(db, "users", currentUsername));
-        if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-    } catch(e){}
-
     if (selectedImageFile && messageInput.value.includes("(image)")) {
         const fileToUpload = selectedImageFile;
         selectedImageFile = null;
@@ -629,7 +638,6 @@ messageForm?.addEventListener("submit", async (e) => {
                     mediaUrl: data.data.url,
                     mediaType: "image",
                     username: currentUsername,
-                    avatar: userAvatar,
                     room: roomKey,
                     timestamp: serverTimestamp()
                 });
@@ -656,11 +664,28 @@ messageForm?.addEventListener("submit", async (e) => {
     await addDoc(collection(db, "messages"), {
         text,
         username: currentUsername,
-        avatar: userAvatar,
         room: roomKey,
         timestamp: serverTimestamp()
     });
 });
+
+async function getLiveUserAvatar(username) {
+    if (!username) return "avatar1.png";
+    if (username === currentUsername && myMiniAvatar && myMiniAvatar.src) {
+        return myMiniAvatar.src;
+    }
+    if (userAvatarsCache[username]) {
+        return userAvatarsCache[username];
+    }
+    try {
+        const userDoc = await getDoc(doc(db, "users", username));
+        if (userDoc.exists() && userDoc.data().avatar) {
+            userAvatarsCache[username] = userDoc.data().avatar;
+            return userDoc.data().avatar;
+        }
+    } catch (err) {}
+    return "avatar1.png";
+}
 
 function loadMessagesFeed() {
     if (unsubscribeMessages) unsubscribeMessages();
@@ -705,10 +730,7 @@ function loadMessagesFeed() {
                 contentHTML = sanitizeMessageHTML(msg.text || "");
             }
 
-            let effectiveAvatar = msg.avatar || 'avatar1.png';
-            if (isSent && myMiniAvatar && myMiniAvatar.src) {
-                effectiveAvatar = myMiniAvatar.src;
-            }
+            const effectiveAvatar = await getLiveUserAvatar(msg.username);
 
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
