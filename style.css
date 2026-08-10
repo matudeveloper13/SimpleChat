@@ -435,3 +435,5 @@ html, body {
 .hidden {
   display: none !important;
 }
+html, body { overflow: hidden; }
+#messages-container { overflow-y: auto; }

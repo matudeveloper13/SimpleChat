@@ -123,14 +123,14 @@ function formatMessageTime(timestamp) {
     return isToday ? `Today at ${timeStr}` : `${monthStr}, ${timeStr}`;
 }
 
-// XSS Prevention
+// XSS Prevention Security Filter
 function escapeHTML(str) {
     const p = document.createElement("p");
     p.textContent = str;
     return p.innerHTML;
 }
 
-// Smooth Internal Scroll (Prevents full page jumps)
+// Smooth scroll to bottom without page jumping
 function scrollToBottom() {
     if (messagesContainer) {
         messagesContainer.scrollTo({
@@ -286,7 +286,7 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Image / File Uploads
+// Media / File Uploads
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -325,11 +325,11 @@ fileInput.addEventListener("change", async (e) => {
     fileInput.value = "";
 });
 
-// Build Emoji & MP4 Video/GIF Pad
+// Build Emoji, Avatars, and MP4 Video/GIF Pad
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
 
-    // Standard Emojis
+    // Standard Text Emojis
     const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
@@ -361,7 +361,7 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // Video / GIF MP4 Emojis
+    // Video / GIF MP4 Emojis (Appears small in pad, sends full size to chat)
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const vidThumb = document.createElement("video");
@@ -371,10 +371,12 @@ if (discordEmojiGrid) {
         vidThumb.muted = true;
         vidThumb.playsInline = true;
         vidThumb.className = "discord-picker-emoji-thumb video-gif-thumb";
-        vidThumb.style.width = "36px";
-        vidThumb.style.height = "36px";
+        
+        // Strict small thumbnail dimensions so picker layout stays compact
+        vidThumb.style.width = "28px";
+        vidThumb.style.height = "28px";
         vidThumb.style.objectFit = "cover";
-        vidThumb.style.borderRadius = "6px";
+        vidThumb.style.borderRadius = "4px";
         vidThumb.style.cursor = "pointer";
 
         vidThumb.addEventListener("click", async () => {
@@ -415,7 +417,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Typing Indicators & Message Posting
+// Typing Indicators & Sending Messages
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -631,7 +633,7 @@ sendFriendRequestBtn?.addEventListener("click", async () => {
             friendActionMsg.textContent = "User not found.";
             return;
         }
-        await updateDoc(doc(doc(db, "users", targetName)), {
+        await updateDoc(doc(db, "users", targetName), {
             friendRequests: arrayUnion(currentUsername)
         });
         friendActionMsg.textContent = `Friend request sent to ${targetName}!`;
