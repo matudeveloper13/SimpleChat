@@ -26,12 +26,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Hidden file input restricted ONLY to photos
+// Hidden file input restricted ONLY to PNG, JPG, JPEG
 const fileInput = document.createElement("input");
 fileInput.type = "file";
-fileInput.accept = "image/png, image/jpeg, image/jpg, image/gif, image/webp";
+fileInput.accept = "image/png, image/jpeg, image/jpg";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
+
+let selectedImageFile = null; // Stores the chosen image file pending upload
 
 // DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
@@ -129,7 +131,6 @@ function sanitizeMessageHTML(str) {
     temp.textContent = str;
     let safeText = temp.innerHTML;
 
-    // Safely restores inline avatar images sent as tags
     return safeText.replace(/&lt;img\s+src="([^"]+)"\s+class="inline-avatar-emoji"\s*\/?&gt;/gi, (match, src) => {
         return `<img src="${src}" class="inline-avatar-emoji" alt="emoji" />`;
     });
@@ -290,58 +291,40 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Photo Upload in DMs
+// Photo Selection Logic for DMs
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
 });
 
-fileInput.addEventListener("change", async (e) => {
+fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const validImageTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
-    if (!validImageTypes.includes(file.type)) {
-        alert("ONLY PHOTOS! Please select a PNG, JPG, or GIF image.");
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+        alert("Only PNG, JPG, and JPEG images are allowed!");
         fileInput.value = "";
         return;
     }
 
-    if (currentUsername === "Guest" || currentChatRoom === "global") return;
-
-    try {
-        const fileRef = ref(storage, `chat_uploads/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(fileRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        let userAvatar = "avatar1.png";
-        try {
-            const snap = await getDoc(doc(db, "users", currentUsername));
-            if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
-        } catch(err){}
-
-        const targetRoom = [currentUsername, currentChatRoom].sort().join("_dm_");
-
-        await addDoc(collection(db, "messages"), {
-            mediaUrl: downloadURL,
-            mediaType: "image",
-            username: currentUsername,
-            avatar: userAvatar,
-            room: targetRoom,
-            timestamp: serverTimestamp()
-        });
-
-    } catch (err) {
-        alert("Failed to send photo: " + err.message);
-    }
-    fileInput.value = "";
+    selectedImageFile = file;
+    messageInput.value = "(image)";
+    messageInput.focus();
 });
 
-// Build Picker items with Mobile Touch Support
+// Clear photo selection if user deletes "(image)" text
+messageInput?.addEventListener("input", () => {
+    if (selectedImageFile && !messageInput.value.includes("(image)")) {
+        selectedImageFile = null;
+        fileInput.value = "";
+    }
+});
+
+// Emoji Picker Setup
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
 
-    // 1. Text Emojis
     const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
@@ -360,7 +343,6 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
-    // 2. Avatar Emojis
     const avatars = ["avatar1.png", "avatar2.png", "avatar3.png", "avatar4.png", "avatar5.png"];
     avatars.forEach(av => {
         const imgThumb = document.createElement("img");
@@ -384,7 +366,6 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    // 3. MP4 GIFs
     const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const wrapper = document.createElement("div");
@@ -472,8 +453,9 @@ messageInput?.addEventListener("input", async () => {
 
 messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const text = messageInput.value.trim();
-    if (!text || currentUsername === "Guest") return;
+    if (currentUsername === "Guest") return;
+
+    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
 
     let userAvatar = "avatar1.png";
     try {
@@ -481,9 +463,38 @@ messageForm?.addEventListener("submit", async (e) => {
         if (snap.exists() && snap.data().avatar) userAvatar = snap.data().avatar;
     } catch(e){}
 
+    // Handle Image Upload if selected
+    if (selectedImageFile && messageInput.value.includes("(image)")) {
+        const fileToUpload = selectedImageFile;
+        selectedImageFile = null;
+        fileInput.value = "";
+        messageInput.value = "";
+
+        try {
+            const fileRef = ref(storage, `chat_uploads/${Date.now()}_${fileToUpload.name}`);
+            const snapshot = await uploadBytes(fileRef, fileToUpload);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            await addDoc(collection(db, "messages"), {
+                mediaUrl: downloadURL,
+                mediaType: "image",
+                username: currentUsername,
+                avatar: userAvatar,
+                room: roomKey,
+                timestamp: serverTimestamp()
+            });
+        } catch (err) {
+            alert("Failed to send image: " + err.message);
+        }
+        return;
+    }
+
+    // Handle Normal Text Message
+    const text = messageInput.value.trim();
+    if (!text) return;
+
     messageInput.value = "";
     
-    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
     try {
         await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
     } catch(e){}
@@ -536,11 +547,9 @@ function loadMessagesFeed() {
                         <video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;">
                         </video>`;
                 } else if (isAvatarEmoji) {
-                    // Lock preset avatar photos to tiny inline 24px emoji size
                     contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
                 } else {
-                    // Uploaded user photos
-                    contentHTML = `<img src="${mediaPath}" style="max-width:200px; width:100%; border-radius:8px; display:block;" />`;
+                    contentHTML = `<img src="${mediaPath}" style="max-width:220px; width:100%; border-radius:8px; display:block;" />`;
                 }
             } else {
                 contentHTML = sanitizeMessageHTML(msg.text || "");
