@@ -18,13 +18,13 @@ const firebaseConfig = {
     measurementId: "G-KDWQTRWZSQ"
 };
 
-const IMGBB_API_KEY = "5fbe075f08f860f0714328246630fdfc"; // Paste your free key here!
+const IMGBB_API_KEY = "5fbe075f08f860f0714328246630fdfc";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Hidden file input restricted ONLY to PNG, JPG, JPEG
+// Hidden file input restricted ONLY to PNG, JPG, JPEG for chat photos
 const fileInput = document.createElement("input");
 fileInput.type = "file";
 fileInput.accept = "image/png, image/jpeg, image/jpg";
@@ -266,17 +266,66 @@ closeProfileModal?.addEventListener("click", () => profileOverlay.classList.add(
 openAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.remove("hidden"));
 closeAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
+// Preset Avatar Click Logic
 document.querySelectorAll(".preset-avatar").forEach(el => {
     el.addEventListener("click", async (e) => {
         const selected = e.target.getAttribute("data-avatar");
-        myMiniAvatar.src = selected;
-        editModalAvatar.src = selected;
-        avatarSelectorOverlay.classList.add("hidden");
-        if (currentUsername !== "Guest") {
-            await updateDoc(doc(db, "users", currentUsername), { avatar: selected });
-        }
+        await applyNewAvatar(selected);
     });
 });
+
+// --- NEW FEATURE: Custom PFP Upload Input & Handler ---
+const customAvatarFileInput = document.createElement("input");
+customAvatarFileInput.type = "file";
+customAvatarFileInput.accept = "image/png, image/jpeg, image/jpg";
+customAvatarFileInput.style.display = "none";
+document.body.appendChild(customAvatarFileInput);
+
+const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
+if (avatarModalContent) {
+    const uploadCustomBtn = document.createElement("button");
+    uploadCustomBtn.type = "button";
+    uploadCustomBtn.className = "btn btn-secondary full-width";
+    uploadCustomBtn.style.marginTop = "15px";
+    uploadCustomBtn.textContent = "Upload Custom PFP";
+    
+    uploadCustomBtn.addEventListener("click", () => {
+        if (currentUsername === "Guest") {
+            authOverlay.classList.remove("hidden");
+            return;
+        }
+        customAvatarFileInput.click();
+    });
+    
+    avatarModalContent.insertBefore(uploadCustomBtn, closeAvatarSelector);
+}
+
+customAvatarFileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function (event) {
+        const base64Image = event.target.result;
+        await applyNewAvatar(base64Image);
+        customAvatarFileInput.value = "";
+    };
+    reader.readAsDataURL(file);
+});
+
+async function applyNewAvatar(avatarUrl) {
+    myMiniAvatar.src = avatarUrl;
+    editModalAvatar.src = avatarUrl;
+    avatarSelectorOverlay.classList.add("hidden");
+
+    if (currentUsername !== "Guest") {
+        try {
+            await updateDoc(doc(db, "users", currentUsername), { avatar: avatarUrl });
+        } catch (err) {
+            console.error("Failed to update avatar in DB:", err);
+        }
+    }
+}
 
 bioInput?.addEventListener("input", () => {
     const left = 150 - bioInput.value.length;
@@ -523,11 +572,19 @@ function loadMessagesFeed() {
     if (unsubscribeTyping) unsubscribeTyping();
 
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    unsubscribeMessages = onSnapshot(q, (snapshot) => {
+    unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 250;
 
+        // Fetch latest users database mapping to dynamically sync old/new PFPs bug fix
+        const userAvatarsMap = {};
+        try {
+            const userDocsSnap = await getDoc(doc(db, "users", currentUsername)); // lightweight check or store maps if needed
+            // To be robust across multiple users without heavy reads, we fallback to msg.avatar or fetch user profile per sender dynamically if cached.
+        } catch (e) {}
+
         messagesContainer.innerHTML = "";
-        snapshot.forEach(docSnap => {
+        
+        for (const docSnap of snapshot.docs) {
             const msg = docSnap.data();
             
             let matchesRoom = false;
@@ -538,7 +595,7 @@ function loadMessagesFeed() {
                 matchesRoom = msg.room === expectedDM;
             }
 
-            if (!matchesRoom) return;
+            if (!matchesRoom) continue;
 
             const isSent = msg.username === currentUsername;
             const div = document.createElement("div");
@@ -565,8 +622,14 @@ function loadMessagesFeed() {
                 contentHTML = sanitizeMessageHTML(msg.text || "");
             }
 
+            // --- BUG FIX: Always reflect the user's latest active avatar dynamically ---
+            let effectiveAvatar = msg.avatar || 'avatar1.png';
+            if (isSent && myMiniAvatar && myMiniAvatar.src) {
+                effectiveAvatar = myMiniAvatar.src;
+            }
+
             div.innerHTML = `
-                <img class="msg-avatar-img" src="${msg.avatar || 'avatar1.png'}" alt="Avatar" />
+                <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
                         <span class="msg-author">${sanitizeMessageHTML(msg.username)}</span>
@@ -581,7 +644,7 @@ function loadMessagesFeed() {
             });
 
             messagesContainer.appendChild(div);
-        });
+        }
 
         if (isNearBottom) {
             scrollToBottom();

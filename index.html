@@ -80,7 +80,6 @@
             <form id="message-form" class="message-form">
                 <div style="position: relative; display: flex; align-items: center; gap: 6px;">
                     <button type="button" id="emoji-btn" class="btn-emoji" title="Open Emoji Panel">😀</button>
-                    <!-- Dedicated Photo Upload Button (Hidden in Global, Shown dynamically or via DM header/input action if desired, but let's make it dynamically toggleable via JS depending on chat room) -->
                     <button type="button" id="photo-btn" class="btn-emoji hidden" title="Send Photo in DM">📷</button>
                     <!-- Emoji Popup Picker -->
                     <div id="discord-emoji-picker" class="discord-emoji-picker hidden">
@@ -188,6 +187,13 @@
             <img class="preset-avatar" src="avatar4.png" data-avatar="avatar4.png" alt="avatar4" />
             <img class="preset-avatar" src="avatar5.png" data-avatar="avatar5.png" alt="avatar5" />
         </div>
+        
+        <!-- Custom Avatar Upload Button & Hidden Input -->
+        <div style="margin-top: 15px;">
+            <input type="file" id="custom-avatar-file-input" accept="image/*" class="hidden" />
+            <button id="upload-custom-avatar-btn" class="btn btn-secondary full-width">Upload Custom PFP</button>
+        </div>
+
         <button id="close-avatar-selector" class="btn btn-secondary full-width mt-20">Back</button>
     </div>
 </div>
