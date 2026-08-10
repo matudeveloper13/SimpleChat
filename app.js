@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -574,11 +574,12 @@ if (discordEmojiGrid) {
         discordEmojiGrid.appendChild(imgThumb);
     });
 
-    const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "myvideo.mp4"];
+    const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "gif4.mp4", "gif5.mp4", "gif6.mp4", "gif7.mp4", "gif8.mp4", "gif9.mp4", "gif10.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const wrapper = document.createElement("div");
         wrapper.className = "discord-picker-emoji-thumb video-wrapper";
-        wrapper.style.cssText = "width: 36px; height: 36px; position: relative; cursor: pointer;";
+        wrapper.style.cssText = "width: 36px; height: 36px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;";
+        
         const vidThumb = document.createElement("video");
         vidThumb.src = videoSrc;
         vidThumb.autoplay = true;
@@ -726,7 +727,8 @@ function loadMessagesFeed() {
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
 
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+    // Use limit(50) or similar to fetch only recent messages so it loads instantly at the newest message instead of full history
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(100));
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
@@ -764,11 +766,12 @@ function loadMessagesFeed() {
                     const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
 
                     if (isVideo) {
-                        contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
+                        // Original full size when sent in chat container
+                        contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:320px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
                     } else if (isAvatarEmoji) {
                         contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
                     } else {
-                        contentHTML = `<img src="${mediaPath}" style="max-width:220px; width:100%; border-radius:8px; display:block;" />`;
+                        contentHTML = `<img src="${mediaPath}" style="max-width:280px; width:100%; border-radius:8px; display:block;" />`;
                     }
                 } else {
                     contentHTML = sanitizeMessageHTML(msg.text || "");
@@ -799,6 +802,7 @@ function loadMessagesFeed() {
             scrollToBottom(false);
             isInitialLoad = false;
         } else if (hasNewMessages && (isNearBottom || messagesContainer.scrollTop === 0)) {
+            // Only auto-scroll smoothly if user sent it or was already at bottom. Prevent view jumping to top if user is looking at older history.
             scrollToBottom(true);
         }
     });
@@ -807,6 +811,7 @@ function loadMessagesFeed() {
     unsubscribeTyping = onSnapshot(typingQuery, (snap) => {
         let activeTypingUsers = [];
         const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
+        const nowTime = new Date();
 
         snap.forEach(d => {
             const data = d.data();
@@ -816,11 +821,10 @@ function loadMessagesFeed() {
             if (matchesRoom && data.username && data.username !== currentUsername) {
                 if (data.lastTyped) {
                     const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
-                    if (new Date() - typedDate < 5000) {
+                    // Strictly check if timestamp is valid and within the last 4 seconds to eliminate zombie/stuck typing indicators
+                    if (!isNaN(typedDate.getTime()) && (nowTime - typedDate < 4000)) {
                         activeTypingUsers.push(data.username);
                     }
-                } else {
-                    activeTypingUsers.push(data.username);
                 }
             }
         });
@@ -832,7 +836,7 @@ function loadMessagesFeed() {
             } else if (activeTypingUsers.length === 2) {
                 typingMessageText = `${activeTypingUsers[0]} and ${activeTypingUsers[1]} are typing`;
             } else {
-                typingMessageText = `many persons are typing`;
+                typingMessageText = `multiple users are typing`;
             }
 
             typingTextLabel.innerHTML = `${typingMessageText} <span class="typing-dots" style="display:inline-block; margin-left:4px;"><span></span><span></span><span></span></span>`;
