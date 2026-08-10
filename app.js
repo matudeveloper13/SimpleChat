@@ -24,7 +24,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Helper function to render crown next to specific usernames if they match
 function renderUsernameWithCrown(username) {
     const cleanName = (username || "").trim();
     if (cleanName === "matubanana" || cleanName === "matubanana2") {
@@ -99,6 +98,28 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
+
+// Inject typing indicator animated dots styling dynamically
+const typingStyleTag = document.createElement("style");
+typingStyleTag.innerHTML = `
+    .typing-dots span {
+        height: 6px;
+        width: 6px;
+        float: left;
+        margin: 0 1px;
+        background-color: var(--text-muted);
+        border-radius: 50%;
+        display: inline-block;
+        animation: typingBounce 1.3s infinite ease-in-out;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: -1.1s; }
+    .typing-dots span:nth-child(3) { animation-delay: -0.9s; }
+    @keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-4px); }
+    }
+`;
+document.head.appendChild(typingStyleTag);
 
 // State
 let currentUsername = "Guest";
@@ -230,10 +251,7 @@ loginForm?.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUsername = user.email.split("@")[0];
-        
-        // Render mini username with crown if applicable
         myMiniUsername.innerHTML = renderUsernameWithCrown(currentUsername);
-
         authModalBtn.classList.add("hidden");
         logoutBtn.classList.remove("hidden");
 
@@ -270,7 +288,6 @@ topLeftProfile?.addEventListener("click", () => {
         authOverlay.classList.remove("hidden");
         return;
     }
-    // Render crown inside profile modal username header
     profileDisplayUsername.innerHTML = renderUsernameWithCrown(currentUsername);
     profileOverlay.classList.remove("hidden");
 });
@@ -279,7 +296,6 @@ closeProfileModal?.addEventListener("click", () => profileOverlay.classList.add(
 openAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.remove("hidden"));
 closeAvatarSelector?.addEventListener("click", () => avatarSelectorOverlay.classList.add("hidden"));
 
-// Preset Avatar Click Logic
 document.querySelectorAll(".preset-avatar").forEach(el => {
     el.addEventListener("click", async (e) => {
         const selected = e.target.getAttribute("data-avatar");
@@ -287,14 +303,12 @@ document.querySelectorAll(".preset-avatar").forEach(el => {
     });
 });
 
-// --- SINGLE BUTTON: "Upload Custom Profile Picture" & TIKTOK-STYLE CROP PREVIEW MODAL ---
 const customAvatarFileInput = document.createElement("input");
 customAvatarFileInput.type = "file";
 customAvatarFileInput.accept = "image/png, image/jpeg, image/jpg";
 customAvatarFileInput.style.display = "none";
 document.body.appendChild(customAvatarFileInput);
 
-// Build TikTok-style crop preview overlay dynamically
 const cropOverlay = document.createElement("div");
 cropOverlay.id = "crop-preview-overlay";
 cropOverlay.className = "modal-overlay hidden";
@@ -352,11 +366,9 @@ customAvatarFileInput.addEventListener("change", (e) => {
         activeImageObj = new Image();
         activeImageObj.onload = function () {
             cropSourceImg.src = activeImageObj.src;
-            
             imgScale = Math.max(200 / activeImageObj.width, 200 / activeImageObj.height);
             imgX = (200 - (activeImageObj.width * imgScale)) / 2;
             imgY = (200 - (activeImageObj.height * imgScale)) / 2;
-            
             updateCropImageTransform();
             avatarSelectorOverlay.classList.add("hidden");
             cropOverlay.classList.remove("hidden");
@@ -391,25 +403,6 @@ window.addEventListener("mousemove", (e) => {
 window.addEventListener("mouseup", () => {
     isDragging = false;
     if (cropViewport) cropViewport.style.cursor = "grab";
-});
-
-cropViewport?.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 1) {
-        isDragging = true;
-        startX = e.touches[0].clientX - imgX;
-        startY = e.touches[0].clientY - imgY;
-    }
-});
-
-window.addEventListener("touchmove", (e) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    imgX = e.touches[0].clientX - startX;
-    imgY = e.touches[0].clientY - startY;
-    updateCropImageTransform();
-});
-
-window.addEventListener("touchend", () => {
-    isDragging = false;
 });
 
 cropViewport?.addEventListener("wheel", (e) => {
@@ -455,9 +448,7 @@ async function applyNewAvatar(avatarUrl) {
     if (currentUsername !== "Guest") {
         try {
             await updateDoc(doc(db, "users", currentUsername), { avatar: avatarUrl });
-        } catch (err) {
-            console.error("Failed to update avatar in DB:", err);
-        }
+        } catch (err) {}
     }
 }
 
@@ -472,7 +463,6 @@ saveBioBtn?.addEventListener("click", async () => {
     profileOverlay.classList.add("hidden");
 });
 
-// Photo Selection Logic for DMs
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest" || currentChatRoom === "global") return;
     fileInput.click();
@@ -501,25 +491,19 @@ messageInput?.addEventListener("input", () => {
     }
 });
 
-// Emoji Picker Setup
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
-
     const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
         emojiDiv.className = "discord-picker-emoji-thumb";
         emojiDiv.textContent = em;
-
-        const handleEmojiSelect = (e) => {
+        emojiDiv.addEventListener("click", (e) => {
             e.preventDefault();
             messageInput.value += em;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
-        };
-
-        emojiDiv.addEventListener("click", handleEmojiSelect);
-        emojiDiv.addEventListener("touchend", handleEmojiSelect);
+        });
         discordEmojiGrid.appendChild(emojiDiv);
     });
 
@@ -533,16 +517,12 @@ if (discordEmojiGrid) {
         imgThumb.style.borderRadius = "50%";
         imgThumb.style.objectFit = "cover";
         imgThumb.style.cursor = "pointer";
-
-        const handleAvatarSelect = (e) => {
+        imgThumb.addEventListener("click", (e) => {
             e.preventDefault();
             messageInput.value += `<img src="${av}" class="inline-avatar-emoji" />`;
             messageInput.focus();
             discordEmojiPicker.classList.add("hidden");
-        };
-
-        imgThumb.addEventListener("click", handleAvatarSelect);
-        imgThumb.addEventListener("touchend", handleAvatarSelect);
+        });
         discordEmojiGrid.appendChild(imgThumb);
     });
 
@@ -550,26 +530,17 @@ if (discordEmojiGrid) {
     projectVideos.forEach(videoSrc => {
         const wrapper = document.createElement("div");
         wrapper.className = "discord-picker-emoji-thumb video-wrapper";
-        wrapper.style.width = "36px";
-        wrapper.style.height = "36px";
-        wrapper.style.position = "relative";
-        wrapper.style.cursor = "pointer";
-
+        wrapper.style.cssText = "width: 36px; height: 36px; position: relative; cursor: pointer;";
         const vidThumb = document.createElement("video");
         vidThumb.src = videoSrc;
         vidThumb.autoplay = true;
         vidThumb.loop = true;
         vidThumb.muted = true;
         vidThumb.playsInline = true;
-        vidThumb.style.width = "100%";
-        vidThumb.style.height = "100%";
-        vidThumb.style.objectFit = "cover";
-        vidThumb.style.borderRadius = "4px";
-        vidThumb.style.pointerEvents = "none";
-
+        vidThumb.style.cssText = "width: 100%; height: 100%; object-fit: cover; border-radius: 4px; pointer-events: none;";
         wrapper.appendChild(vidThumb);
 
-        const handleGifSelect = async (e) => {
+        wrapper.addEventListener("click", async (e) => {
             e.preventDefault();
             discordEmojiPicker.classList.add("hidden");
             if (currentUsername === "Guest") return;
@@ -581,7 +552,6 @@ if (discordEmojiGrid) {
             } catch(err){}
 
             const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-
             await addDoc(collection(db, "messages"), {
                 mediaUrl: videoSrc,
                 mediaType: "video",
@@ -590,10 +560,7 @@ if (discordEmojiGrid) {
                 room: roomKey,
                 timestamp: serverTimestamp()
             });
-        };
-
-        wrapper.addEventListener("click", handleGifSelect);
-        wrapper.addEventListener("touchend", handleGifSelect);
+        });
         discordEmojiGrid.appendChild(wrapper);
     });
 }
@@ -609,7 +576,6 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Typing & Messages
 messageInput?.addEventListener("input", async () => {
     if (currentUsername === "Guest") return;
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
@@ -652,14 +618,11 @@ messageForm?.addEventListener("submit", async (e) => {
         try {
             const formData = new FormData();
             formData.append("image", fileToUpload);
-
             const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
                 method: "POST",
                 body: formData
             });
-
             const data = await res.json();
-
             if (data.success) {
                 messageInput.value = "";
                 await addDoc(collection(db, "messages"), {
@@ -706,12 +669,10 @@ function loadMessagesFeed() {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 250;
-
         messagesContainer.innerHTML = "";
         
         for (const docSnap of snapshot.docs) {
             const msg = docSnap.data();
-            
             let matchesRoom = false;
             if (currentChatRoom === "global") {
                 matchesRoom = !msg.room || msg.room === "global";
@@ -725,7 +686,6 @@ function loadMessagesFeed() {
             const isSent = msg.username === currentUsername;
             const div = document.createElement("div");
             div.className = `msg ${isSent ? 'sent' : 'received'}`;
-            
             const readableTime = formatMessageTime(msg.timestamp);
 
             let contentHTML = "";
@@ -735,9 +695,7 @@ function loadMessagesFeed() {
                 const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
 
                 if (isVideo) {
-                    contentHTML = `
-                        <video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;">
-                        </video>`;
+                    contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
                 } else if (isAvatarEmoji) {
                     contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
                 } else {
@@ -752,14 +710,11 @@ function loadMessagesFeed() {
                 effectiveAvatar = myMiniAvatar.src;
             }
 
-            // Render author name with crown inside chat messages feed
-            const renderedAuthorName = renderUsernameWithCrown(msg.username);
-
             div.innerHTML = `
                 <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
                 <div class="msg-content">
                     <div class="msg-header">
-                        <span class="msg-author">${renderedAuthorName}</span>
+                        <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
                         <span class="msg-time">${readableTime}</span>
                     </div>
                     <div class="msg-bubble">${contentHTML}</div>
@@ -798,9 +753,16 @@ function loadMessagesFeed() {
         });
 
         if (activeTypingUsers.length > 0) {
-            typingTextLabel.textContent = activeTypingUsers.length === 1 
-                ? `@${activeTypingUsers[0]} is typing...` 
-                : `Multiple users are typing...`;
+            let typingMessageText = "";
+            if (activeTypingUsers.length === 1) {
+                typingMessageText = `${activeTypingUsers[0]} is typing`;
+            } else if (activeTypingUsers.length === 2) {
+                typingMessageText = `${activeTypingUsers[0]} and ${activeTypingUsers[1]} are typing`;
+            } else {
+                typingMessageText = `many persons are typing`;
+            }
+
+            typingTextLabel.innerHTML = `${typingMessageText} <span class="typing-dots" style="display:inline-block; margin-left:4px;"><span></span><span></span><span></span></span>`;
             typingIndicatorBox.classList.remove("hidden");
         } else {
             typingIndicatorBox.classList.add("hidden");
@@ -808,13 +770,9 @@ function loadMessagesFeed() {
     });
 }
 
-// User Profiles & Friend Requests
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
-    
-    // Render crown next to username in view profile modal header
     viewUserName.innerHTML = renderUsernameWithCrown(username);
-
     viewUserAvatar.src = "avatar1.png";
     viewUserBio.textContent = "Loading bio...";
     profileFriendActionBtn.textContent = "Send Friend Request";
@@ -825,7 +783,6 @@ async function openUserProfileModal(username) {
         if (userDoc.exists()) {
             const data = userDoc.data();
             if (data.avatar) viewUserAvatar.src = data.avatar;
-            // Clean bio text untouched (crown excluded from bio text content)
             if (data.bio) viewUserBio.textContent = data.bio;
         }
 
@@ -920,7 +877,7 @@ async function loadFriendsAndRequests() {
     } else {
         friends.forEach(friend => {
             const row = document.createElement("div");
-            row.style.cssStr = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
+            row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
             row.innerHTML = `<span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
@@ -935,7 +892,6 @@ function openDirectMessage(friendName) {
     if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
-    
     loadMessagesFeed();
 }
 
