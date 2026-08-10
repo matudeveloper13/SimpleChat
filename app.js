@@ -134,6 +134,8 @@ let typingTimeout = null;
 let unsubscribeMessages = null;
 let unsubscribeTyping = null;
 let userAvatarsCache = {};
+let renderedMessageIds = new Set();
+let isInitialLoad = true;
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -170,11 +172,11 @@ function sanitizeMessageHTML(str) {
     });
 }
 
-function scrollToBottom() {
+function scrollToBottom(smooth = true) {
     if (messagesContainer) {
         messagesContainer.scrollTo({
             top: messagesContainer.scrollHeight,
-            behavior: 'smooth'
+            behavior: smooth ? 'smooth' : 'auto'
         });
     }
 }
@@ -720,13 +722,20 @@ function loadMessagesFeed() {
     if (unsubscribeMessages) unsubscribeMessages();
     if (unsubscribeTyping) unsubscribeTyping();
 
+    renderedMessageIds.clear();
+    messagesContainer.innerHTML = "";
+    isInitialLoad = true;
+
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
-        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 250;
-        messagesContainer.innerHTML = "";
+        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
+        let hasNewMessages = false;
+
         for (const docSnap of snapshot.docs) {
+            const msgId = docSnap.id;
             const msg = docSnap.data();
+
             let matchesRoom = false;
             if (currentChatRoom === "global") {
                 matchesRoom = !msg.room || msg.room === "global";
@@ -739,50 +748,58 @@ function loadMessagesFeed() {
 
             if (!matchesRoom) continue;
 
-            const isSent = msg.username === currentUsername;
-            const div = document.createElement("div");
-            div.className = `msg ${isSent ? 'sent' : 'received'}`;
-            const readableTime = formatMessageTime(msg.timestamp);
+            if (!renderedMessageIds.has(msgId)) {
+                renderedMessageIds.add(msgId);
+                hasNewMessages = true;
 
-            let contentHTML = "";
-            if (msg.mediaUrl || msg.imageUrl) {
-                const mediaPath = msg.mediaUrl || msg.imageUrl;
-                const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
-                const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
+                const isSent = msg.username === currentUsername;
+                const div = document.createElement("div");
+                div.className = `msg ${isSent ? 'sent' : 'received'}`;
+                const readableTime = formatMessageTime(msg.timestamp);
 
-                if (isVideo) {
-                    contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
-                } else if (isAvatarEmoji) {
-                    contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
+                let contentHTML = "";
+                if (msg.mediaUrl || msg.imageUrl) {
+                    const mediaPath = msg.mediaUrl || msg.imageUrl;
+                    const isVideo = msg.mediaType === "video" || mediaPath.endsWith(".mp4");
+                    const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
+
+                    if (isVideo) {
+                        contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:200px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
+                    } else if (isAvatarEmoji) {
+                        contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
+                    } else {
+                        contentHTML = `<img src="${mediaPath}" style="max-width:220px; width:100%; border-radius:8px; display:block;" />`;
+                    }
                 } else {
-                    contentHTML = `<img src="${mediaPath}" style="max-width:220px; width:100%; border-radius:8px; display:block;" />`;
+                    contentHTML = sanitizeMessageHTML(msg.text || "");
                 }
-            } else {
-                contentHTML = sanitizeMessageHTML(msg.text || "");
-            }
 
-            const effectiveAvatar = await getLiveUserAvatar(msg.username);
+                const effectiveAvatar = await getLiveUserAvatar(msg.username);
 
-            div.innerHTML = `
-                <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
-                <div class="msg-content">
-                    <div class="msg-header">
-                        <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
-                        <span class="msg-time">${readableTime}</span>
+                div.innerHTML = `
+                    <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
+                    <div class="msg-content">
+                        <div class="msg-header">
+                            <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
+                            <span class="msg-time">${readableTime}</span>
+                        </div>
+                        <div class="msg-bubble">${contentHTML}</div>
                     </div>
-                    <div class="msg-bubble">${contentHTML}</div>
-                </div>
-            `;
+                `;
 
-            div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
-                el.addEventListener("click", () => openUserProfileModal(msg.username));
-            });
+                div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
+                    el.addEventListener("click", () => openUserProfileModal(msg.username));
+                });
 
-            messagesContainer.appendChild(div);
+                messagesContainer.appendChild(div);
+            }
         }
 
-        if (isNearBottom) {
-            scrollToBottom();
+        if (isInitialLoad) {
+            scrollToBottom(false);
+            isInitialLoad = false;
+        } else if (hasNewMessages && (isNearBottom || messagesContainer.scrollTop === 0)) {
+            scrollToBottom(true);
         }
     });
 
@@ -946,7 +963,7 @@ async function loadFriendsAndRequests() {
 function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
-    exitDmBtn.classList.add("hidden"); // Kept hidden or controlled cleanly by DOM states
+    exitDmBtn.classList.add("hidden");
     exitDmBtn.style.display = "inline-block";
     if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
