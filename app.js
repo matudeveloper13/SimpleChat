@@ -505,6 +505,7 @@ navFriendsBtn?.addEventListener("click", () => {
     globalChatSection.classList.add("hidden");
     friendsSection.classList.remove("hidden");
     loadFriendsAndRequests();
+    loadFriendsAndGroupsLists();
 });
 
 backToChatBtn?.addEventListener("click", () => {
@@ -517,6 +518,7 @@ exitDmBtn?.addEventListener("click", () => {
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.display = "none";
+    groupSidebar.classList.add("hidden");
     if (photoBtn) {
         photoBtn.classList.add("hidden");
         photoBtn.style.display = "none";
@@ -858,7 +860,7 @@ saveBioBtn?.addEventListener("click", async () => {
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest") return;
     if (currentChatRoom === "global") {
-        alert("Images can only be sent in DMs, not in the global chat!");
+        alert("Images can only be sent in DMs and Group chats, not in the global chat!");
         return;
     }
     fileInput.click();
@@ -942,8 +944,16 @@ if (discordEmojiGrid) {
             discordEmojiPicker.classList.add("hidden");
             if (currentUsername === "Guest") return;
 
-            const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-            const recipient = currentChatRoom === "global" ? null : currentChatRoom;
+            let roomKey = "global";
+            let recipient = null;
+            if (currentChatRoom === "global") {
+                roomKey = "global";
+            } else if (currentChatRoom.startsWith("group_")) {
+                roomKey = currentChatRoom;
+            } else {
+                roomKey = [currentUsername, currentChatRoom].sort().join("_dm_");
+                recipient = currentChatRoom;
+            }
             
             const messagePayload = {
                 mediaUrl: videoSrc,
@@ -991,8 +1001,16 @@ messageForm?.addEventListener("submit", async (e) => {
         return;
     }
 
-    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-    const recipient = currentChatRoom === "global" ? null : currentChatRoom;
+    let roomKey = "global";
+    let recipient = null;
+    if (currentChatRoom === "global") {
+        roomKey = "global";
+    } else if (currentChatRoom.startsWith("group_")) {
+        roomKey = currentChatRoom;
+    } else {
+        roomKey = [currentUsername, currentChatRoom].sort().join("_dm_");
+        recipient = currentChatRoom;
+    }
 
     if (selectedImageFile && messageInput.value.includes("(image)")) {
         const fileToUpload = selectedImageFile;
@@ -1124,7 +1142,7 @@ function loadMessagesFeed() {
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
 
-    if (currentChatRoom !== "global") {
+    if (currentChatRoom !== "global" && !currentChatRoom.startsWith("group_")) {
         chatRoomTitle.innerHTML = `<span style="display: flex; align-items: center; gap: 8px;"><img id="dm-header-avatar" src="avatar1.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" /> DM with @${sanitizeMessageHTML(currentChatRoom)}</span>`;
         if (photoBtn) {
             photoBtn.classList.remove("hidden");
@@ -1134,6 +1152,11 @@ function loadMessagesFeed() {
         getLiveUserAvatar(currentChatRoom, dmHeaderAvatarImg).then(av => {
             if (dmHeaderAvatarImg) dmHeaderAvatarImg.src = av;
         });
+    } else if (currentChatRoom.startsWith("group_")) {
+        if (photoBtn) {
+            photoBtn.classList.remove("hidden");
+            photoBtn.style.display = "inline-block";
+        }
     } else {
         chatRoomTitle.textContent = "global chat";
         if (photoBtn) {
@@ -1171,6 +1194,8 @@ function loadMessagesFeed() {
             let matchesRoom = false;
             if (currentChatRoom === "global") {
                 matchesRoom = !msg.room || msg.room === "global" || msg.room === "";
+            } else if (currentChatRoom.startsWith("group_")) {
+                matchesRoom = msg.room === currentChatRoom;
             } else {
                 const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
                 matchesRoom = msg.room === expectedDM || 
@@ -1370,6 +1395,7 @@ profileBlockActionBtn?.addEventListener("click", async () => {
     viewProfileOverlay.classList.add("hidden");
     loadMessagesFeed();
     loadFriendsAndRequests();
+    loadFriendsAndGroupsLists();
 });
 
 profileFriendActionBtn?.addEventListener("click", async () => {
@@ -1402,6 +1428,7 @@ sendFriendRequestBtn?.addEventListener("click", async () => {
         friendActionMsg.textContent = `Friend request sent to ${targetName}!`;
         addFriendInput.value = "";
         loadFriendsAndRequests();
+        loadFriendsAndGroupsLists();
     } catch (err) {
         friendActionMsg.textContent = "Error sending request.";
     }
@@ -1444,6 +1471,7 @@ async function loadFriendsAndRequests() {
                         if (confirm(`Unban @${bName}?`)) {
                             await deleteDoc(doc(db, "banned_users", bName));
                             loadFriendsAndRequests();
+                            loadFriendsAndGroupsLists();
                             loadMessagesFeed();
                         }
                     });
@@ -1526,6 +1554,7 @@ async function loadFriendsAndRequests() {
                         blocked: arrayRemove(blockedUser)
                     });
                     loadFriendsAndRequests();
+                    loadFriendsAndGroupsLists();
                     loadMessagesFeed();
                 });
                 blockedUsersContainer.appendChild(bRow);
@@ -1539,6 +1568,7 @@ function openDirectMessage(friendName) {
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
+    groupSidebar.classList.add("hidden");
     if (photoBtn) {
         photoBtn.classList.remove("hidden");
         photoBtn.style.display = "inline-block";
@@ -1563,4 +1593,183 @@ async function acceptFriendRequest(friendName) {
         friends: arrayUnion(currentUsername)
     });
     loadFriendsAndRequests();
+    loadFriendsAndGroupsLists();
 }
+
+// --- GROUP CHAT EXTENSION & MODIFICATIONS ---
+
+const friendsSectionElement = document.getElementById("friends-section");
+const createGroupBtn = document.createElement("button");
+createGroupBtn.className = "btn btn-primary";
+createGroupBtn.style.cssText = "width: 100%; margin-top: 15px; background: var(--primary-color); color: #fff; border: none; padding: 8px; font-size: 13px; border-radius: 6px; cursor: pointer;";
+createGroupBtn.textContent = "👥 Create Group Chat";
+friendsSectionElement?.appendChild(createGroupBtn);
+
+const groupModalOverlay = document.createElement("div");
+groupModalOverlay.className = "modal-overlay hidden";
+groupModalOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 99999;";
+groupModalOverlay.innerHTML = `
+    <div class="modal" style="background: var(--card-bg); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; border: 1px solid var(--border-color);">
+        <h3 style="margin-bottom: 12px; color: var(--text-color);">Create Group Chat</h3>
+        <input type="text" id="group-name-input" placeholder="Group Name..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); margin-bottom: 15px; box-sizing: border-box;" />
+        <p style="font-size: 12px; color: var(--text-muted); text-align: left; margin-bottom: 6px;">Select Friends to Add:</p>
+        <div id="group-friends-checkbox-container" style="max-height: 150px; overflow-y: auto; text-align: left; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button id="cancel-group-btn" class="btn btn-secondary" style="flex: 1; height: 40px;">Cancel</button>
+            <button id="confirm-group-btn" class="btn btn-primary" style="flex: 1; height: 40px;">Create</button>
+        </div>
+        <p id="group-status-msg" style="font-size: 12px; margin-top: 10px; color: var(--text-muted);"></p>
+    </div>
+`;
+document.body.appendChild(groupModalOverlay);
+
+const groupSidebar = document.createElement("div");
+groupSidebar.id = "group-members-sidebar";
+groupSidebar.className = "hidden";
+groupSidebar.style.cssText = "width: 200px; background: var(--card-bg); border-left: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; height: 100%; box-sizing: border-box;";
+groupSidebar.innerHTML = `
+    <h4 style="font-size: 13px; color: var(--text-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin: 0;">Group Members</h4>
+    <div id="group-sidebar-list" style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto;"></div>
+`;
+if (globalChatSection) {
+    globalChatSection.style.display = "flex";
+    globalChatSection.style.flexDirection = "row";
+    globalChatSection.appendChild(groupSidebar);
+}
+
+const groupsListSection = document.createElement("div");
+groupsListSection.style.cssText = "margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);";
+groupsListSection.innerHTML = `
+    <h3 style="font-size: 14px; margin-bottom: 8px; color: var(--text-color);">Your Group Chats</h3>
+    <div id="groups-list-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+`;
+friendsSection?.appendChild(groupsListSection);
+const groupsListContainer = document.getElementById("groups-list-container");
+
+createGroupBtn?.addEventListener("click", async () => {
+    if (currentUsername === "Guest") return;
+    document.getElementById("group-name-input").value = "";
+    document.getElementById("group-status-msg").textContent = "";
+    
+    const checkboxContainer = document.getElementById("group-friends-checkbox-container");
+    checkboxContainer.innerHTML = "";
+
+    const mySnap = await getDoc(doc(db, "users", currentUsername));
+    if (mySnap.exists()) {
+        const friends = mySnap.data().friends || [];
+        if (friends.length === 0) {
+            checkboxContainer.innerHTML = `<p style="font-size: 12px; color: var(--text-muted);">You need friends added first to form a group!</p>`;
+        } else {
+            friends.forEach(f => {
+                const label = document.createElement("label");
+                label.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text-color);";
+                label.innerHTML = `<input type="checkbox" value="${f}" class="group-friend-checkbox" /> @${sanitizeMessageHTML(f)}`;
+                checkboxContainer.appendChild(label);
+            });
+        }
+    }
+    groupModalOverlay.classList.remove("hidden");
+});
+
+document.getElementById("cancel-group-btn")?.addEventListener("click", () => {
+    groupModalOverlay.classList.add("hidden");
+});
+
+document.getElementById("confirm-group-btn")?.addEventListener("click", async () => {
+    const groupNameInput = document.getElementById("group-name-input").value.trim();
+    const statusMsg = document.getElementById("group-status-msg");
+    if (!groupNameInput) {
+        statusMsg.textContent = "Please enter a group name.";
+        return;
+    }
+
+    const checkedFriends = Array.from(document.querySelectorAll(".group-friend-checkbox:checked")).map(cb => cb.value);
+    if (checkedFriends.length === 0) {
+        statusMsg.textContent = "Select at least one friend.";
+        return;
+    }
+
+    const members = [currentUsername, ...checkedFriends];
+    statusMsg.textContent = "Creating group...";
+
+    try {
+        await addDoc(collection(db, "groups"), {
+            name: groupNameInput,
+            creator: currentUsername,
+            members: members,
+            createdAt: serverTimestamp()
+        });
+        statusMsg.style.color = "var(--success, #22c55e)";
+        statusMsg.textContent = "Group created successfully!";
+        setTimeout(() => {
+            groupModalOverlay.classList.add("hidden");
+            loadFriendsAndGroupsLists();
+        }, 1200);
+    } catch (err) {
+        statusMsg.style.color = "#ef4444";
+        statusMsg.textContent = "Error: " + err.message;
+    }
+});
+
+async function loadFriendsAndGroupsLists() {
+    if (currentUsername === "Guest") return;
+    if (groupsListContainer) groupsListContainer.innerHTML = "";
+
+    try {
+        const groupsSnap = await getDocs(collection(db, "groups"));
+        let count = 0;
+        groupsSnap.forEach(gDoc => {
+            const gData = gDoc.data();
+            const members = gData.members || [];
+            if (members.includes(currentUsername)) {
+                count++;
+                const row = document.createElement("div");
+                row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px;">👥</span>
+                        <span style="font-weight: 600; color: var(--text-color);">${sanitizeMessageHTML(gData.name)}</span>
+                    </div>
+                    <span style="font-size: 11px; color: var(--text-muted);">${members.length} members</span>
+                `;
+                row.addEventListener("click", () => openGroupChat(gDoc.id, gData));
+                groupsListContainer.appendChild(row);
+            }
+        });
+
+        if (count === 0 && groupsListContainer) {
+            groupsListContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No group chats yet.</p>`;
+        }
+    } catch (e) {}
+}
+
+function openGroupChat(groupId, groupData) {
+    currentChatRoom = `group_${groupId}`;
+    chatRoomTitle.textContent = `Group: ${groupData.name}`;
+    exitDmBtn.classList.remove("hidden");
+    exitDmBtn.style.display = "inline-block";
+    if (photoBtn) {
+        photoBtn.classList.remove("hidden");
+        photoBtn.style.display = "inline-block";
+    }
+
+    groupSidebar.classList.remove("hidden");
+    const sidebarList = document.getElementById("group-sidebar-list");
+    sidebarList.innerHTML = "";
+    
+    (groupData.members || []).forEach(member => {
+        const isCreator = member === groupData.creator;
+        const memDiv = document.createElement("div");
+        memDiv.style.cssText = "font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 4px; color: var(--text-color);";
+        memDiv.innerHTML = `
+            <span>@${sanitizeMessageHTML(member)}</span>
+            ${isCreator ? `<img src="crown.png" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;" alt="Creator Crown" title="Group Creator" />` : ""}
+        `;
+        sidebarList.appendChild(memDiv);
+    });
+
+    friendsSection.classList.add("hidden");
+    globalChatSection.classList.remove("hidden");
+    loadMessagesFeed();
+}
+// -------------------------------------------------
