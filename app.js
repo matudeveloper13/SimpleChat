@@ -1,11 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
-    signOut, onAuthStateChanged 
+    signOut, onAuthStateChanged, deleteUser 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, Timestamp 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, Timestamp, getDocs, where 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -23,6 +23,17 @@ const IMGBB_API_KEY = "5fbe075f08f860f0714328246630fdfc";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+const BANNED_WORDS = ["nigger", "nigga", "fag", "faggot", "cunt", "whore", "slut", "retard", "kike", "chink", "spic", "beaner"];
+
+function containsProfanity(str) {
+    if (!str) return false;
+    const cleanStr = str.toLowerCase().replace(/[^a-z0-9]/g, "");
+    for (const word of BANNED_WORDS) {
+        if (cleanStr.includes(word)) return true;
+    }
+    return false;
+}
 
 function renderUsernameWithCrown(username) {
     const cleanName = (username || "").trim();
@@ -100,6 +111,89 @@ const friendActionMsg = document.getElementById("friend-action-msg");
 const pendingRequestsContainer = document.getElementById("pending-requests-container");
 const friendsListContainer = document.getElementById("friends-list-container");
 
+const blockedSection = document.createElement("div");
+blockedSection.style.cssText = "margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color);";
+blockedSection.innerHTML = `
+    <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--text-color);">Blocked Users</h3>
+    <div id="blocked-users-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+`;
+friendsSection?.appendChild(blockedSection);
+const blockedUsersContainer = document.getElementById("blocked-users-container");
+
+const banPanelTrigger = document.createElement("button");
+banPanelTrigger.id = "ban-panel-trigger-btn";
+banPanelTrigger.className = "hidden btn btn-secondary";
+banPanelTrigger.style.cssText = "margin-left: 10px; background: #ef4444; color: #fff; border: none; padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;";
+banPanelTrigger.textContent = "🔨 Ban Panel";
+if (chatRoomTitle && chatRoomTitle.parentNode) {
+    chatRoomTitle.parentNode.appendChild(banPanelTrigger);
+}
+
+const banModalOverlay = document.createElement("div");
+banModalOverlay.className = "modal-overlay hidden";
+banModalOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 99999;";
+banModalOverlay.innerHTML = `
+    <div class="modal" style="background: var(--card-bg); padding: 25px; border-radius: 12px; text-align: center; max-width: 380px; width: 90%; border: 1px solid var(--border-color);">
+        <h3 style="margin-bottom: 15px; color: #ef4444;">Admin Ban Panel</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Enter exact username to completely purge user messages and remove account database record.</p>
+        <input type="text" id="ban-username-input" placeholder="Username to ban..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); margin-bottom: 15px; box-sizing: border-box;" />
+        <div style="display: flex; gap: 10px;">
+            <button id="cancel-ban-btn" class="btn btn-secondary" style="flex: 1; height: 40px;">Cancel</button>
+            <button id="confirm-ban-btn" class="btn btn-primary" style="flex: 1; height: 40px; background: #ef4444; border-color: #ef4444; color: #fff;">Purge & Ban</button>
+        </div>
+        <p id="ban-status-msg" style="font-size: 12px; margin-top: 12px; color: var(--text-muted);"></p>
+    </div>
+`;
+document.body.appendChild(banModalOverlay);
+
+banPanelTrigger?.addEventListener("click", () => {
+    document.getElementById("ban-username-input").value = "";
+    document.getElementById("ban-status-msg").textContent = "";
+    banModalOverlay.classList.remove("hidden");
+});
+
+document.getElementById("cancel-ban-btn")?.addEventListener("click", () => {
+    banModalOverlay.classList.add("hidden");
+});
+
+document.getElementById("confirm-ban-btn")?.addEventListener("click", async () => {
+    const targetUserToBan = document.getElementById("ban-username-input").value.trim();
+    const statusMsg = document.getElementById("ban-status-msg");
+    if (!targetUserToBan) {
+        statusMsg.textContent = "Please type a username.";
+        return;
+    }
+
+    if (currentUsername !== "matubanana" && currentUsername !== "matubanana2") {
+        statusMsg.textContent = "Unauthorized.";
+        return;
+    }
+
+    if (!confirm(`Are you extremely sure you want to completely BAN and PURGE all messages from @${targetUserToBan}?`)) {
+        return;
+    }
+
+    statusMsg.textContent = "Purging messages...";
+    try {
+        const msgsQuery = query(collection(db, "messages"), where("username", "==", targetUserToBan));
+        const msgSnapshots = await getDocs(msgsQuery);
+        const deletePromises = msgSnapshots.docs.map(d => deleteDoc(doc(db, "messages", d.id)));
+        await Promise.all(deletePromises);
+
+        statusMsg.textContent = "Deleting user profile record...";
+        await deleteDoc(doc(db, "users", targetUserToBan));
+
+        statusMsg.style.color = "var(--success, #22c55e)";
+        statusMsg.textContent = `Successfully purged @${targetUserToBan}!`;
+        setTimeout(() => {
+            banModalOverlay.classList.add("hidden");
+        }, 1500);
+    } catch (err) {
+        statusMsg.style.color = "#ef4444";
+        statusMsg.textContent = "Error: " + err.message;
+    }
+});
+
 const topLeftProfile = document.getElementById("top-left-profile");
 const profileOverlay = document.getElementById("profile-overlay");
 const closeProfileModal = document.getElementById("close-profile-modal");
@@ -149,6 +243,14 @@ if (viewUserAvatar && viewUserAvatar.parentNode) {
     profilePfpWrapper.appendChild(profileStatusDot);
 }
 
+const profileBlockActionBtn = document.createElement("button");
+profileBlockActionBtn.className = "btn btn-secondary";
+profileBlockActionBtn.style.cssText = "width: 100%; margin-top: 8px; background: #ef4444; color: #fff; border: none;";
+profileBlockActionBtn.textContent = "Block User";
+if (profileFriendActionBtn && profileFriendActionBtn.parentNode) {
+    profileFriendActionBtn.parentNode.insertBefore(profileBlockActionBtn, profileFriendActionBtn.nextSibling);
+}
+
 const emojiBtn = document.getElementById("emoji-btn");
 const photoBtn = document.getElementById("photo-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
@@ -162,6 +264,7 @@ let unsubscribeUserProfiles = new Map();
 let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
+let myBlockedUsersCache = [];
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -269,6 +372,7 @@ authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidd
 closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
 logoutBtn?.addEventListener("click", () => {
     if (presenceInterval) clearInterval(presenceInterval);
+    if (banPanelTrigger) banPanelTrigger.classList.add("hidden");
     signOut(auth);
 });
 
@@ -276,6 +380,12 @@ registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("register-username").value.trim();
     const password = document.getElementById("register-password").value;
+
+    if (containsProfanity(username)) {
+        authError.textContent = "Profanity is not allowed in usernames!";
+        return;
+    }
+
     try {
         await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
         await setDoc(doc(db, "users", username), {
@@ -284,6 +394,7 @@ registerForm?.addEventListener("submit", async (e) => {
             avatar: "avatar1.png",
             friends: [],
             friendRequests: [],
+            blocked: [],
             lastSeen: serverTimestamp()
         });
         authOverlay.classList.add("hidden");
@@ -311,6 +422,12 @@ onAuthStateChanged(auth, async (user) => {
         authModalBtn.classList.add("hidden");
         logoutBtn.classList.remove("hidden");
 
+        if (currentUsername === "matubanana" || currentUsername === "matubanana2") {
+            banPanelTrigger?.classList.remove("hidden");
+        } else {
+            banPanelTrigger?.classList.add("hidden");
+        }
+
         const userRef = doc(db, "users", currentUsername);
         const snap = await getDoc(userRef);
         if (!snap.exists()) {
@@ -320,10 +437,13 @@ onAuthStateChanged(auth, async (user) => {
                 avatar: "avatar1.png",
                 friends: [],
                 friendRequests: [],
+                blocked: [],
                 lastSeen: serverTimestamp()
             });
+            myBlockedUsersCache = [];
         } else {
             const data = snap.data();
+            myBlockedUsersCache = data.blocked || [];
             if (data.avatar) {
                 myMiniAvatar.src = data.avatar;
                 editModalAvatar.src = data.avatar;
@@ -335,9 +455,11 @@ onAuthStateChanged(auth, async (user) => {
     } else {
         if (presenceInterval) clearInterval(presenceInterval);
         currentUsername = "Guest";
+        myBlockedUsersCache = [];
         myMiniUsername.textContent = "Guest";
         authModalBtn.classList.remove("hidden");
         logoutBtn.classList.add("hidden");
+        banPanelTrigger?.classList.add("hidden");
     }
     loadMessagesFeed();
 });
@@ -871,6 +993,8 @@ function loadMessagesFeed() {
             const msgId = docSnap.id;
             const msg = docSnap.data();
 
+            if (myBlockedUsersCache.includes(msg.username)) continue;
+
             let matchesRoom = false;
             if (currentChatRoom === "global") {
                 matchesRoom = !msg.room || msg.room === "global" || msg.room === "";
@@ -991,6 +1115,7 @@ async function openUserProfileModal(username) {
     viewUserBio.textContent = "Loading bio...";
     profileFriendActionBtn.textContent = "Send Friend Request";
     profileFriendActionBtn.disabled = false;
+    profileBlockActionBtn.textContent = myBlockedUsersCache.includes(username) ? "Unblock User" : "Block User";
 
     if (profileStatusDot) {
         profileStatusDot.style.background = "#ef4444";
@@ -1039,6 +1164,10 @@ async function openUserProfileModal(username) {
         } else if (currentUsername === username) {
             profileFriendActionBtn.textContent = "This is You";
             profileFriendActionBtn.disabled = true;
+            profileBlockActionBtn.style.display = "none";
+        }
+        if (currentUsername !== username) {
+            profileBlockActionBtn.style.display = "block";
         }
     } catch(e) {}
 
@@ -1046,6 +1175,29 @@ async function openUserProfileModal(username) {
 }
 
 closeViewProfile?.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
+
+profileBlockActionBtn?.addEventListener("click", async () => {
+    if (currentUsername === "Guest" || !viewingProfileUsername) return;
+    const myRef = doc(db, "users", currentUsername);
+    const isCurrentlyBlocked = myBlockedUsersCache.includes(viewingProfileUsername);
+
+    if (isCurrentlyBlocked) {
+        await updateDoc(myRef, {
+            blocked: arrayRemove(viewingProfileUsername)
+        });
+        myBlockedUsersCache = myBlockedUsersCache.filter(u => u !== viewingProfileUsername);
+        profileBlockActionBtn.textContent = "Block User";
+    } else {
+        await updateDoc(myRef, {
+            blocked: arrayUnion(viewingProfileUsername)
+        });
+        myBlockedUsersCache.push(viewingProfileUsername);
+        profileBlockActionBtn.textContent = "Unblock User";
+    }
+    viewProfileOverlay.classList.add("hidden");
+    loadMessagesFeed();
+    loadFriendsAndRequests();
+});
 
 profileFriendActionBtn?.addEventListener("click", async () => {
     if (currentUsername === "Guest" || !viewingProfileUsername) return;
@@ -1083,6 +1235,7 @@ async function loadFriendsAndRequests() {
     if (currentUsername === "Guest") return;
     pendingRequestsContainer.innerHTML = "";
     friendsListContainer.innerHTML = "";
+    if (blockedUsersContainer) blockedUsersContainer.innerHTML = "";
 
     const mySnap = await getDoc(doc(db, "users", currentUsername));
     if (!mySnap.exists()) return;
@@ -1090,6 +1243,7 @@ async function loadFriendsAndRequests() {
 
     const requests = myData.friendRequests || [];
     const friends = myData.friends || [];
+    myBlockedUsersCache = myData.blocked || [];
 
     if (requests.length === 0) {
         pendingRequestsContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No pending requests.</p>`;
@@ -1138,6 +1292,30 @@ async function loadFriendsAndRequests() {
             `;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
+        }
+    }
+
+    if (blockedUsersContainer) {
+        if (myBlockedUsersCache.length === 0) {
+            blockedUsersContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No blocked users.</p>`;
+        } else {
+            for (const blockedUser of myBlockedUsersCache) {
+                const bRow = document.createElement("div");
+                bRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
+                bRow.innerHTML = `
+                    <span style="font-size: 13px;">@${sanitizeMessageHTML(blockedUser)}</span>
+                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; background: #ef4444; color: #fff; border: none;">Unblock</button>
+                `;
+                bRow.querySelector("button").addEventListener("click", async () => {
+                    const myRef = doc(db, "users", currentUsername);
+                    await updateDoc(myRef, {
+                        blocked: arrayRemove(blockedUser)
+                    });
+                    loadFriendsAndRequests();
+                    loadMessagesFeed();
+                });
+                blockedUsersContainer.appendChild(bRow);
+            }
         }
     }
 }
