@@ -335,7 +335,6 @@ document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
-    // Remove duplicate/extra custom buttons completely, keep only ONE clean "Upload Custom Profile Picture" button
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
 
     const uploadCustomBtn = document.createElement("button");
@@ -844,26 +843,47 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // Position the 3 dots clearly outside the bubble to the right with a space gap
-                div.innerHTML = `
-                    <div class="avatar-slot" style="display:inline-flex;"></div>
-                    <div class="msg-content" style="position: relative; display: flex; align-items: flex-start;">
-                        <div style="flex: 1; min-width: 0;">
-                            <div class="msg-header">
-                                <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
-                                <span class="msg-time">${readableTime}</span>
-                            </div>
-                            ${replyHTML}
-                            <div class="msg-bubble">${contentHTML}</div>
-                        </div>
-                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 10px; margin-top: 24px; position: relative;">
+                // Match layout orientation: received messages have 3 dots on the right, sent messages have 3 dots on the left (spaced away from the bubble)
+                if (isSent) {
+                    div.innerHTML = `
+                        <div class="msg-options-container" style="display: flex; align-items: center; margin-right: 12px; margin-top: 24px; position: relative;">
                             <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
+                            <div class="msg-dropdown-menu hidden" style="position: absolute; left: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
                                 <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
                             </div>
                         </div>
-                    </div>
-                `;
+                        <div class="msg-content" style="position: relative; display: flex; align-items: flex-start;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="msg-header" style="justify-content: flex-end;">
+                                    <span class="msg-time">${readableTime}</span>
+                                </div>
+                                ${replyHTML}
+                                <div class="msg-bubble">${contentHTML}</div>
+                            </div>
+                        </div>
+                        <div class="avatar-slot" style="display:inline-flex;"></div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div class="avatar-slot" style="display:inline-flex;"></div>
+                        <div class="msg-content" style="position: relative; display: flex; align-items: flex-start;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="msg-header">
+                                    <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
+                                    <span class="msg-time">${readableTime}</span>
+                                </div>
+                                ${replyHTML}
+                                <div class="msg-bubble">${contentHTML}</div>
+                            </div>
+                            <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: 24px; position: relative;">
+                                <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
+                                <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
+                                    <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
 
                 div.querySelector(".avatar-slot").appendChild(avatarImgElement);
 
@@ -1044,7 +1064,7 @@ async function loadFriendsAndRequests() {
             row.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
-                    <span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span>
+                    <span style="font-weight: 600;">DM @${sanitizeMessageHTML(friend)}</span>
                 </div>
                 <span style="font-size: 12px; color: var(--success);">Connected</span>
             `;
