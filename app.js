@@ -599,7 +599,6 @@ messageInput?.addEventListener("input", () => {
 
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
-    // Only the requested 6 emojis in the emoji picker
     const basicEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
@@ -865,6 +864,7 @@ function loadMessagesFeed() {
         renderedMessageIds.forEach(id => {
             if (!existingDocIds.has(id)) {
                 renderedMessageIds.delete(id);
+                localReactionsCache.delete(id);
                 const el = document.getElementById(`msg-${id}`);
                 if (el) el.remove();
             }
@@ -891,6 +891,8 @@ function loadMessagesFeed() {
 
             if (localReactionsCache.has(msgId)) {
                 msg.reactions = localReactionsCache.get(msgId);
+            } else {
+                localReactionsCache.set(msgId, msg.reactions || {});
             }
 
             if (!renderedMessageIds.has(msgId)) {
@@ -1049,7 +1051,6 @@ function attachReactionHandlers(messageElement, msgId, msg) {
                 picker.className = "quick-reaction-picker";
                 picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
                 
-                // Only the requested 6 emojis
                 const quickEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
                 quickEmojis.forEach(em => {
                     const emBtn = document.createElement("button");
