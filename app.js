@@ -39,7 +39,7 @@ fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
 let selectedImageFile = null;
-let replyingToMessage = null; // State to track active reply target
+let replyingToMessage = null;
 
 // DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
@@ -58,6 +58,12 @@ const messageInput = document.getElementById("message-input");
 const messagesContainer = document.getElementById("messages-container");
 const chatRoomTitle = document.getElementById("chat-room-title");
 const exitDmBtn = document.getElementById("exit-dm-btn");
+
+// Ensure exitDmBtn visibility style fallback config
+if (exitDmBtn) {
+    exitDmBtn.classList.add("hidden");
+    exitDmBtn.style.cursor = "pointer";
+}
 
 // Create Reply Preview Bar dynamically above the input form
 const replyPreviewBar = document.createElement("div");
@@ -191,10 +197,12 @@ backToChatBtn?.addEventListener("click", () => {
     globalChatSection.classList.remove("hidden");
 });
 
+// Fixed back to global chat handler
 exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
+    exitDmBtn.style.display = "none";
     if (photoBtn) photoBtn.classList.add("hidden");
     loadMessagesFeed();
 });
@@ -328,6 +336,7 @@ cropOverlay.innerHTML = `
 `;
 document.body.appendChild(cropOverlay);
 
+// Fixed duplicate button bug in PFP configuration modal (only 1 button instance now)
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
@@ -757,6 +766,7 @@ function loadMessagesFeed() {
                 const isSent = msg.username === currentUsername;
                 const div = document.createElement("div");
                 div.className = `msg ${isSent ? 'sent' : 'received'}`;
+                div.style.position = "relative";
                 const readableTime = formatMessageTime(msg.timestamp);
 
                 let contentHTML = "";
@@ -776,7 +786,6 @@ function loadMessagesFeed() {
                     contentHTML = sanitizeMessageHTML(msg.text || "");
                 }
 
-                // Append reply attribution snippet if message is a reply
                 let replyHTML = "";
                 if (msg.replyTo) {
                     const snippetText = (msg.replyTo.text || "").length > 40 ? msg.replyTo.text.substring(0, 40) + "..." : (msg.replyTo.text || "");
@@ -799,10 +808,40 @@ function loadMessagesFeed() {
                         ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
                     </div>
+                    <div class="msg-options-container" style="position: absolute; top: 8px; right: 8px;">
+                        <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 0 4px; line-height: 1;" title="Options">•••</button>
+                        <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; display: none; min-width: 90px; padding: 4px 0;">
+                            <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
+                        </div>
+                    </div>
                 `;
 
-                // Add a reply action/button context or double click handler
-                div.addEventListener("dblclick", () => {
+                const dotsBtn = div.querySelector(".msg-three-dots-btn");
+                const dropdownMenu = div.querySelector(".msg-dropdown-menu");
+                const replyOptionBtn = div.querySelector(".msg-reply-option-btn");
+
+                dotsBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll(".msg-dropdown-menu").forEach(menu => {
+                        if (menu !== dropdownMenu) {
+                            menu.classList.add("hidden");
+                            menu.style.display = "none";
+                        }
+                    });
+                    const isHidden = dropdownMenu.classList.contains("hidden");
+                    if (isHidden) {
+                        dropdownMenu.classList.remove("hidden");
+                        dropdownMenu.style.display = "block";
+                    } else {
+                        dropdownMenu.classList.add("hidden");
+                        dropdownMenu.style.display = "none";
+                    }
+                });
+
+                replyOptionBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.add("hidden");
+                    dropdownMenu.style.display = "none";
                     if (currentUsername === "Guest") return;
                     replyingToMessage = msg;
                     replyPreviewText.innerHTML = `Replying to <b>@${sanitizeMessageHTML(msg.username)}</b>: ${sanitizeMessageHTML(msg.text || msg.mediaType || "Attachment")}`;
@@ -827,6 +866,13 @@ function loadMessagesFeed() {
         }
     });
 }
+
+document.addEventListener("click", () => {
+    document.querySelectorAll(".msg-dropdown-menu").forEach(menu => {
+        menu.classList.add("hidden");
+        menu.style.display = "none";
+    });
+});
 
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
@@ -946,7 +992,7 @@ async function loadFriendsAndRequests() {
 function openDirectMessage(friendName) {
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
-    exitDmBtn.classList.add("hidden");
+    exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
     if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
