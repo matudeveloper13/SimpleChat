@@ -169,7 +169,7 @@ function sanitizeMessageHTML(str) {
     });
 }
 
-function scrollToBottom(smooth = true) {
+function scrollToBottom(smooth = false) {
     if (messagesContainer) {
         messagesContainer.scrollTo({
             top: messagesContainer.scrollHeight,
@@ -333,7 +333,8 @@ cropOverlay.innerHTML = `
 document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
-if (avatarModalContent && !avatarModalContent.querySelector(".custom-pfp-trigger-btn")) {
+if (avatarModalContent) {
+    avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(el => el.remove());
     const customPfpBtn = document.createElement("button");
     customPfpBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
     customPfpBtn.textContent = "Upload Custom PFP";
