@@ -114,6 +114,21 @@ const bioInput = document.getElementById("bio-input");
 const saveBioBtn = document.getElementById("save-bio-btn");
 const bioCharCount = document.getElementById("bio-char-count");
 
+// Setup PFP wrapper and status indicator in own profile modal (next to pfp)
+let myProfilePfpWrapper = null;
+let myProfileStatusDot = null;
+if (editModalAvatar && editModalAvatar.parentNode) {
+    myProfilePfpWrapper = document.createElement("div");
+    myProfilePfpWrapper.style.cssText = "position: relative; display: inline-block; margin-bottom: 15px;";
+    editModalAvatar.parentNode.insertBefore(myProfilePfpWrapper, editModalAvatar);
+    myProfilePfpWrapper.appendChild(editModalAvatar);
+    
+    myProfileStatusDot = document.createElement("span");
+    myProfileStatusDot.id = "my-profile-modal-status-dot";
+    myProfileStatusDot.style.cssText = "position: absolute; bottom: 5px; right: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--success, #22c55e); border: 3px solid var(--card-bg);";
+    myProfilePfpWrapper.appendChild(myProfileStatusDot);
+}
+
 const viewProfileOverlay = document.getElementById("view-profile-overlay");
 const closeViewProfile = document.getElementById("close-view-profile");
 const viewUserAvatar = document.getElementById("view-user-avatar");
@@ -121,7 +136,7 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
 
-// Setup PFP wrapper and status indicator in view profile modal
+// Setup PFP wrapper and status indicator in view profile modal (next to pfp)
 let profilePfpWrapper = null;
 let profileStatusDot = null;
 if (viewUserAvatar && viewUserAvatar.parentNode) {
@@ -231,7 +246,10 @@ exitDmBtn?.addEventListener("click", () => {
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.display = "none";
-    if (photoBtn) photoBtn.classList.remove("hidden");
+    if (photoBtn) {
+        photoBtn.classList.add("hidden");
+        photoBtn.style.display = "none";
+    }
     loadMessagesFeed();
 });
 
@@ -332,6 +350,9 @@ topLeftProfile?.addEventListener("click", () => {
         return;
     }
     profileDisplayUsername.innerHTML = renderUsernameWithCrown(currentUsername);
+    if (myProfileStatusDot) {
+        myProfileStatusDot.style.background = "var(--success, #22c55e)";
+    }
     profileOverlay.classList.remove("hidden");
 });
 closeProfileModal?.addEventListener("click", () => profileOverlay.classList.add("hidden"));
@@ -806,12 +827,20 @@ function loadMessagesFeed() {
 
     if (currentChatRoom !== "global") {
         chatRoomTitle.innerHTML = `<span style="display: flex; align-items: center; gap: 8px;"><img id="dm-header-avatar" src="avatar1.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" /> DM with @${sanitizeMessageHTML(currentChatRoom)}</span>`;
+        if (photoBtn) {
+            photoBtn.classList.remove("hidden");
+            photoBtn.style.display = "inline-block";
+        }
         const dmHeaderAvatarImg = document.getElementById("dm-header-avatar");
         getLiveUserAvatar(currentChatRoom, dmHeaderAvatarImg).then(av => {
             if (dmHeaderAvatarImg) dmHeaderAvatarImg.src = av;
         });
     } else {
         chatRoomTitle.textContent = "global chat";
+        if (photoBtn) {
+            photoBtn.classList.add("hidden");
+            photoBtn.style.display = "none";
+        }
     }
 
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
@@ -979,11 +1008,7 @@ async function openUserProfileModal(username) {
             }
 
             const bioText = data.bio || "Hey there! I am using SimpleChat.";
-            const statusLabel = isOnline 
-                ? '<span style="color: var(--success, #22c55e); font-weight: 600;">🟢 Online</span>' 
-                : '<span style="color: #ef4444; font-weight: 600;">🔴 Offline</span>';
-            
-            viewUserBio.innerHTML = `<div style="margin-bottom: 8px;">Status: ${statusLabel}</div><div style="color: var(--text-color);">${sanitizeMessageHTML(bioText)}</div>`;
+            viewUserBio.innerHTML = `<div style="color: var(--text-color);">${sanitizeMessageHTML(bioText)}</div>`;
         }
 
         if (currentUsername !== "Guest" && currentUsername !== username) {
@@ -1116,7 +1141,10 @@ function openDirectMessage(friendName) {
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
-    if (photoBtn) photoBtn.classList.remove("hidden");
+    if (photoBtn) {
+        photoBtn.classList.remove("hidden");
+        photoBtn.style.display = "inline-block";
+    }
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     loadMessagesFeed();
