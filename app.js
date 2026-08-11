@@ -624,7 +624,8 @@ messageInput?.addEventListener("input", async () => {
         await setDoc(typingDocRef, {
             username: currentUsername,
             room: roomKey,
-            lastTyped: serverTimestamp()
+            lastTypedTime: Date.now(),
+            timestamp: serverTimestamp()
         });
 
         if (typingTimeout) clearTimeout(typingTimeout);
@@ -803,35 +804,29 @@ function loadMessagesFeed() {
         }
     });
 
-    // Bulletproof typing listener with automatic zombie/stuck document cleanup
     const typingQuery = query(collection(db, "typing"));
     unsubscribeTyping = onSnapshot(typingQuery, async (snap) => {
         let activeTypingUsers = [];
         const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-        const nowTime = new Date();
+        const nowTime = Date.now();
 
         for (const d of snap.docs) {
             const data = d.data();
             const matchesRoom = (data.room === currentRoomKey) || 
                                 (currentChatRoom !== "global" && (data.room === `${currentChatRoom}_${currentUsername}` || data.room === `${currentUsername}_${currentChatRoom}`));
 
-            if (matchesRoom && data.username) {
-                if (data.lastTyped) {
-                    const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
-                    const diffMs = nowTime - typedDate;
+            if (matchesRoom && data.username && data.username !== currentUsername) {
+                const typedTime = data.lastTypedTime || 0;
+                const timeDiff = nowTime - typedTime;
 
-                    // If a typing status is older than 3 seconds, automatically delete it from database as a cleanup failsafe
-                    if (isNaN(typedDate.getTime()) || diffMs > 3000) {
-                        try {
-                            await deleteDoc(d.ref);
-                        } catch(e) {}
-                        continue;
-                    }
-
-                    if (data.username !== currentUsername && diffMs <= 2500) {
-                        activeTypingUsers.push(data.username);
-                    }
+                if (typedTime === 0 || timeDiff > 2500) {
+                    try {
+                        await deleteDoc(d.ref);
+                    } catch(e) {}
+                    continue;
                 }
+
+                activeTypingUsers.push(data.username);
             }
         }
 
