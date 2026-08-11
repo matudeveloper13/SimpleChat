@@ -130,7 +130,7 @@ let currentUsername = "Guest";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let unsubscribeMessages = null;
-let unsubscribeUserProfiles = new Map(); // Track live profile listeners to update avatars instantly
+let unsubscribeUserProfiles = new Map();
 let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
@@ -335,6 +335,7 @@ document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
+    // Remove duplicate/extra custom buttons completely, keep only ONE clean "Upload Custom Profile Picture" button
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
 
     const uploadCustomBtn = document.createElement("button");
@@ -706,10 +707,9 @@ messageForm?.addEventListener("submit", async (e) => {
     scrollToBottom(true);
 });
 
-// Real-time avatar observer helper to sync avatar updates without refreshing page
 function watchUserAvatar(username, callback) {
     if (!username) return;
-    if (unsubscribeUserProfiles.has(username)) return; // already listening
+    if (unsubscribeUserProfiles.has(username)) return;
 
     const userDocRef = doc(db, "users", username);
     const unsub = onSnapshot(userDocRef, (docSnap) => {
@@ -765,7 +765,6 @@ function loadMessagesFeed() {
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
 
-    // Update Chat Room Title header to include the chat partner's avatar in DMs
     if (currentChatRoom !== "global") {
         chatRoomTitle.innerHTML = `<span style="display: flex; align-items: center; gap: 8px;"><img id="dm-header-avatar" src="avatar1.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" /> DM with @${sanitizeMessageHTML(currentChatRoom)}</span>`;
         const dmHeaderAvatarImg = document.getElementById("dm-header-avatar");
@@ -845,21 +844,23 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // Layout with 3 dots (︙) positioned at the outer right edge away from the profile picture/content box
+                // Position the 3 dots clearly outside the bubble to the right with a space gap
                 div.innerHTML = `
                     <div class="avatar-slot" style="display:inline-flex;"></div>
-                    <div class="msg-content">
-                        <div class="msg-header">
-                            <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
-                            <span class="msg-time">${readableTime}</span>
+                    <div class="msg-content" style="position: relative; display: flex; align-items: flex-start;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="msg-header">
+                                <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
+                                <span class="msg-time">${readableTime}</span>
+                            </div>
+                            ${replyHTML}
+                            <div class="msg-bubble">${contentHTML}</div>
                         </div>
-                        ${replyHTML}
-                        <div class="msg-bubble">${contentHTML}</div>
-                    </div>
-                    <div class="msg-options-container" style="position: absolute; top: 8px; right: 8px;">
-                        <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 0 4px; line-height: 1;" title="Options">︙</button>
-                        <div class="msg-dropdown-menu hidden" style="position: absolute; ${isSent ? 'right: 0; left: auto;' : 'left: 0; right: auto;'} top: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; display: none; min-width: 90px; padding: 4px 0;">
-                            <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
+                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 10px; margin-top: 24px; position: relative;">
+                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
+                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
+                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1017,25 +1018,39 @@ async function loadFriendsAndRequests() {
     if (requests.length === 0) {
         pendingRequestsContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No pending requests.</p>`;
     } else {
-        requests.forEach(reqUser => {
+        for (const reqUser of requests) {
+            const avatarUrl = await getLiveUserAvatar(reqUser);
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);";
-            row.innerHTML = `<span>${sanitizeMessageHTML(reqUser)}</span><button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>`;
+            row.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
+                    <span>${sanitizeMessageHTML(reqUser)}</span>
+                </div>
+                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Accept</button>
+            `;
             row.querySelector("button").addEventListener("click", () => acceptFriendRequest(reqUser));
             pendingRequestsContainer.appendChild(row);
-        });
+        }
     }
 
     if (friends.length === 0) {
         friendsListContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No friends added yet.</p>`;
     } else {
-        friends.forEach(friend => {
+        for (const friend of friends) {
+            const avatarUrl = await getLiveUserAvatar(friend);
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
-            row.innerHTML = `<span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span><span style="font-size: 12px; color: var(--success);">Connected</span>`;
+            row.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
+                    <span style="font-weight: 600;">💬 DM @${sanitizeMessageHTML(friend)}</span>
+                </div>
+                <span style="font-size: 12px; color: var(--success);">Connected</span>
+            `;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
-        });
+        }
     }
 }
 
