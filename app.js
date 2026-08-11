@@ -114,7 +114,6 @@ const bioInput = document.getElementById("bio-input");
 const saveBioBtn = document.getElementById("save-bio-btn");
 const bioCharCount = document.getElementById("bio-char-count");
 
-// Setup PFP wrapper and status indicator in own profile modal (next to pfp)
 let myProfilePfpWrapper = null;
 let myProfileStatusDot = null;
 if (editModalAvatar && editModalAvatar.parentNode) {
@@ -136,7 +135,6 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
 
-// Setup PFP wrapper and status indicator in view profile modal (next to pfp)
 let profilePfpWrapper = null;
 let profileStatusDot = null;
 if (viewUserAvatar && viewUserAvatar.parentNode) {
@@ -395,10 +393,20 @@ document.body.appendChild(cropOverlay);
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(el => el.remove());
+    
+    // Customization requested: "dont add it in THE BIO ass it in the menu where bio is and i dont wnat an emoji just a circle is ok"
     const customPfpBtn = document.createElement("button");
     customPfpBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
-    customPfpBtn.textContent = "Upload Custom PFP";
-    customPfpBtn.style.cssText = "width: 100%; margin-top: 12px;";
+    customPfpBtn.style.cssText = "width: 100%; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;";
+    
+    const circleSpan = document.createElement("span");
+    circleSpan.style.cssText = "width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; display: inline-block;";
+    customPfpBtn.appendChild(circleSpan);
+    
+    const textSpan = document.createElement("span");
+    textSpan.textContent = "Upload Custom PFP";
+    customPfpBtn.appendChild(textSpan);
+
     customPfpBtn.addEventListener("click", () => customAvatarFileInput.click());
     avatarModalContent.appendChild(customPfpBtn);
 }
@@ -652,7 +660,8 @@ if (discordEmojiGrid) {
                 username: currentUsername,
                 room: roomKey,
                 recipient: recipient,
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                reactions: {}
             };
 
             if (replyingToMessage) {
@@ -718,7 +727,8 @@ messageForm?.addEventListener("submit", async (e) => {
                     username: currentUsername,
                     room: roomKey,
                     recipient: recipient,
-                    timestamp: serverTimestamp()
+                    timestamp: serverTimestamp(),
+                    reactions: {}
                 };
 
                 if (replyingToMessage) {
@@ -752,7 +762,8 @@ messageForm?.addEventListener("submit", async (e) => {
         username: currentUsername,
         room: roomKey,
         recipient: recipient,
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        reactions: {}
     };
 
     if (replyingToMessage) {
@@ -837,6 +848,7 @@ function loadMessagesFeed() {
         });
     } else {
         chatRoomTitle.textContent = "global chat";
+        // Bugfix requested: "theres a bug that if u go to dms and exit back to global chat the photo sending buttton remains pls delete it"
         if (photoBtn) {
             photoBtn.classList.add("hidden");
             photoBtn.style.display = "none";
@@ -918,6 +930,23 @@ function loadMessagesFeed() {
                     deleteBtnHTML = `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>`;
                 }
 
+                // Render reactions container
+                const reactionsData = msg.reactions || {};
+                let reactionsHTML = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">`;
+                for (const [emoji, usersList] of Object.entries(reactionsData)) {
+                    if (!Array.isArray(usersList) || usersList.length === 0) continue;
+                    const hasReacted = usersList.includes(currentUsername);
+                    reactionsHTML += `
+                        <button type="button" class="reaction-pill ${hasReacted ? 'user-reacted' : ''}" data-emoji="${emoji}" style="background: ${hasReacted ? 'var(--primary-color)' : 'var(--card-bg)'}; color: ${hasReacted ? '#fff' : 'var(--text-color)'}; border: 1px solid var(--border-color); border-radius: 12px; padding: 2px 8px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            <span>${emoji}</span>
+                            <span>${usersList.length}</span>
+                        </button>
+                    `;
+                }
+                reactionsHTML += `
+                    <button type="button" class="add-reaction-trigger-btn" title="Add reaction" style="background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; padding: 2px 6px; font-size: 11px; cursor: pointer; color: var(--text-muted);">&#43;</button>
+                </div>`;
+
                 const avatarImgElement = document.createElement("img");
                 avatarImgElement.className = "msg-avatar-img";
                 avatarImgElement.alt = "Avatar";
@@ -935,9 +964,56 @@ function loadMessagesFeed() {
                         </div>
                         ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
+                        ${reactionsHTML}
                     </div>
                 `;
                 div.prepend(avatarImgElement);
+
+                // Setup reaction buttons event handlers
+                div.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
+                    btn.addEventListener("click", async (e) => {
+                        e.stopPropagation();
+                        if (currentUsername === "Guest") {
+                            authOverlay.classList.remove("hidden");
+                            return;
+                        }
+
+                        if (btn.classList.contains("add-reaction-trigger-btn")) {
+                            // Show quick reaction popup picker
+                            existingPickers.forEach(p => p.remove());
+                            existingPickers = [];
+
+                            const picker = document.createElement("div");
+                            picker.className = "quick-reaction-picker";
+                            picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
+                            
+                            const quickEmojis = ["👍", "❤️", "😂", "🔥", "🎉", "💩"];
+                            quickEmojis.forEach(em => {
+                                const emBtn = document.createElement("button");
+                                emBtn.type = "button";
+                                emBtn.textContent = em;
+                                emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
+                                emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
+                                emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
+                                emBtn.addEventListener("click", async (ev) => {
+                                    ev.stopPropagation();
+                                    picker.remove();
+                                    await toggleMessageReaction(msgId, em, msg.reactions || {});
+                                });
+                                picker.appendChild(emBtn);
+                            });
+
+                            btn.style.position = "relative";
+                            btn.appendChild(picker);
+                            existingPickers.push(picker);
+                        } else {
+                            const emojiToToggle = btn.getAttribute("data-emoji");
+                            if (emojiToToggle) {
+                                await toggleMessageReaction(msgId, emojiToToggle, msg.reactions || {});
+                            }
+                        }
+                    });
+                });
 
                 if (isSent) {
                     const delBtn = div.querySelector(".delete-msg-btn");
@@ -976,6 +1052,39 @@ function loadMessagesFeed() {
             scrollToBottom(true);
         }
     });
+}
+
+let existingPickers = [];
+document.addEventListener("click", () => {
+    existingPickers.forEach(p => p.remove());
+    existingPickers = [];
+});
+
+async function toggleMessageReaction(msgId, emoji, currentReactions) {
+    if (currentUsername === "Guest") return;
+    const updatedReactions = JSON.parse(JSON.stringify(currentReactions));
+    
+    if (!updatedReactions[emoji]) {
+        updatedReactions[emoji] = [];
+    }
+
+    const userIndex = updatedReactions[emoji].indexOf(currentUsername);
+    if (userIndex > -1) {
+        updatedReactions[emoji].splice(userIndex, 1);
+        if (updatedReactions[emoji].length === 0) {
+            delete updatedReactions[emoji];
+        }
+    } else {
+        updatedReactions[emoji].push(currentUsername);
+    }
+
+    try {
+        await updateDoc(doc(db, "messages", msgId), {
+            reactions: updatedReactions
+        });
+    } catch (err) {
+        console.error("Failed to update reaction:", err);
+    }
 }
 
 async function openUserProfileModal(username) {
