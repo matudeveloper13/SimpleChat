@@ -195,10 +195,10 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
     }
 });
 
-// --- MUSIC PLAYER PANEL FEATURE (UPPER CORNER, SINGLE UNIQUE BUTTON) ---
+// --- MUSIC PLAYER PANEL FEATURE (SINGLE UNIQUE BUTTON) ---
 let currentAudio = null;
 
-// Clean up any existing duplicate music buttons if present in DOM
+// Completely clear out any duplicate music buttons from previous injections
 document.querySelectorAll("#music-panel-btn").forEach(el => el.remove());
 
 const musicBtn = document.createElement("button");
@@ -273,7 +273,84 @@ document.getElementById("music-stop-btn")?.addEventListener("click", () => {
     }
     musicPanel.querySelectorAll(".music-track-btn").forEach(b => b.style.fontWeight = "normal");
 });
-// -----------------------------------------
+// -------------------------------------------------
+
+// --- FALLING BACKGROUND DOTS & RARE EMOJI EASTER EGG ---
+document.querySelectorAll("#bg-falling-dots-canvas").forEach(el => el.remove());
+
+const bgCanvas = document.createElement("canvas");
+bgCanvas.id = "bg-falling-dots-canvas";
+bgCanvas.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;";
+document.body.prepend(bgCanvas);
+
+const bgCtx = bgCanvas.getContext("2d");
+let bgWidth = bgCanvas.width = window.innerWidth;
+let bgHeight = bgCanvas.height = window.innerHeight;
+
+window.addEventListener("resize", () => {
+    bgWidth = bgCanvas.width = window.innerWidth;
+    bgHeight = bgCanvas.height = window.innerHeight;
+});
+
+const easterEggEmojis = ["🐢", "😊", "🚀", "😢", "😂", "✨", "🔥", "🍌"];
+const fallingParticles = [];
+const particleCount = 45;
+
+for (let i = 0; i < particleCount; i++) {
+    fallingParticles.push({
+        x: Math.random() * bgWidth,
+        y: Math.random() * bgHeight,
+        radius: Math.random() * 2.5 + 1,
+        speedY: Math.random() * 0.8 + 0.3,
+        opacity: Math.random() * 0.5 + 0.2,
+        isEmoji: false,
+        emoji: "",
+        size: 0
+    });
+}
+
+function animateFallingBackground() {
+    bgCtx.clearRect(0, 0, bgWidth, bgHeight);
+
+    const isDark = document.body.classList.contains("dark-mode");
+    const dotColor = isDark ? "rgba(255, 255, 255, " : "rgba(0, 0, 0, ";
+
+    for (let p of fallingParticles) {
+        p.y += p.speedY;
+        if (p.y > bgHeight + 20) {
+            p.y = -20;
+            p.x = Math.random() * bgWidth;
+            
+            // Rare chance to turn into an emoji easter egg when recycling from top (approx 5% chance - very rare)
+            if (Math.random() < 0.05) {
+                p.isEmoji = true;
+                p.emoji = easterEggEmojis[Math.floor(Math.random() * easterEggEmojis.length)];
+                p.size = Math.random() * 6 + 14; 
+                p.speedY = Math.random() * 0.5 + 0.2; 
+            } else {
+                p.isEmoji = false;
+                p.radius = Math.random() * 2.5 + 1;
+                p.speedY = Math.random() * 0.8 + 0.3;
+            }
+        }
+
+        if (p.isEmoji) {
+            bgCtx.font = `${p.size}px sans-serif`;
+            bgCtx.globalAlpha = p.opacity + 0.2;
+            bgCtx.fillText(p.emoji, p.x, p.y);
+        } else {
+            bgCtx.beginPath();
+            bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            bgCtx.fillStyle = dotColor + p.opacity + ")";
+            bgCtx.fill();
+        }
+    }
+
+    requestAnimationFrame(animateFallingBackground);
+}
+
+requestAnimationFrame(animateFallingBackground);
+// -------------------------------------------------
 
 const topLeftProfile = document.getElementById("top-left-profile");
 const profileOverlay = document.getElementById("profile-overlay");
