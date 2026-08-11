@@ -889,13 +889,12 @@ function loadMessagesFeed() {
 
             if (!matchesRoom) continue;
 
-            if (localReactionsCache.has(msgId)) {
-                msg.reactions = localReactionsCache.get(msgId);
-            } else {
-                localReactionsCache.set(msgId, msg.reactions || {});
-            }
+            const reactionsData = msg.reactions || {};
+            localReactionsCache.set(msgId, reactionsData);
 
-            if (!renderedMessageIds.has(msgId)) {
+            let existingMsgEl = document.getElementById(`msg-${msgId}`);
+
+            if (!existingMsgEl) {
                 renderedMessageIds.add(msgId);
                 hasNewMessages = true;
 
@@ -932,13 +931,7 @@ function loadMessagesFeed() {
                     `;
                 }
 
-                let deleteBtnHTML = "";
-                if (isSent) {
-                    deleteBtnHTML = `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>`;
-                }
-
-                const reactionsData = msg.reactions || {};
-                let reactionsHTML = renderReactionsHTML(reactionsData);
+                let deleteBtnHTML = isSent ? `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>` : "";
 
                 const avatarImgElement = document.createElement("img");
                 avatarImgElement.className = "msg-avatar-img";
@@ -957,7 +950,7 @@ function loadMessagesFeed() {
                         </div>
                         ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
-                        ${reactionsHTML}
+                        ${renderReactionsHTML(reactionsData)}
                     </div>
                 `;
                 div.prepend(avatarImgElement);
@@ -992,13 +985,10 @@ function loadMessagesFeed() {
 
                 messagesContainer.appendChild(div);
             } else {
-                const existingMsgEl = document.getElementById(`msg-${msgId}`);
-                if (existingMsgEl) {
-                    let reactionsContainerEl = existingMsgEl.querySelector(".message-reactions-container");
-                    if (reactionsContainerEl) {
-                        reactionsContainerEl.outerHTML = renderReactionsHTML(msg.reactions || {});
-                        attachReactionHandlers(existingMsgEl, msgId, msg);
-                    }
+                const reactionsContainerEl = existingMsgEl.querySelector(".message-reactions-container");
+                if (reactionsContainerEl) {
+                    reactionsContainerEl.outerHTML = renderReactionsHTML(reactionsData);
+                    attachReactionHandlers(existingMsgEl, msgId, msg);
                 }
             }
         }
@@ -1013,7 +1003,7 @@ function loadMessagesFeed() {
 }
 
 function renderReactionsHTML(reactionsData) {
-    let html = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">`;
+    let html = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; position: relative;">`;
     for (const [emoji, usersList] of Object.entries(reactionsData)) {
         if (!Array.isArray(usersList) || usersList.length === 0) continue;
         const hasReacted = usersList.includes(currentUsername);
@@ -1030,64 +1020,66 @@ function renderReactionsHTML(reactionsData) {
     return html;
 }
 
-function attachReactionHandlers(messageElement, msgId, msg) {
-    messageElement.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
-        btn.replaceWith(btn.cloneNode(true));
-    });
+function attachReactionHandlers(messageElement, msgId, msgObj) {
+    const reactionContainer = messageElement.querySelector(".message-reactions-container");
+    if (!reactionContainer) return;
 
-    messageElement.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
-        btn.addEventListener("click", async (e) => {
+    reactionContainer.onclick = async (e) => {
+        const pillBtn = e.target.closest(".reaction-pill");
+        const addBtn = e.target.closest(".add-reaction-trigger-btn");
+
+        if (currentUsername === "Guest") {
+            authOverlay.classList.remove("hidden");
+            return;
+        }
+
+        if (addBtn) {
             e.stopPropagation();
-            if (currentUsername === "Guest") {
-                authOverlay.classList.remove("hidden");
-                return;
-            }
+            existingPickers.forEach(p => p.remove());
+            existingPickers = [];
 
-            if (btn.classList.contains("add-reaction-trigger-btn")) {
-                existingPickers.forEach(p => p.remove());
-                existingPickers = [];
-
-                const picker = document.createElement("div");
-                picker.className = "quick-reaction-picker";
-                picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
-                
-                const quickEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
-                quickEmojis.forEach(em => {
-                    const emBtn = document.createElement("button");
-                    emBtn.type = "button";
-                    emBtn.textContent = em;
-                    emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
-                    emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
-                    emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
-                    emBtn.addEventListener("click", async (ev) => {
-                        ev.stopPropagation();
-                        picker.remove();
-                        await toggleMessageReaction(msgId, em, msg.reactions || {}, messageElement);
-                    });
-                    picker.appendChild(emBtn);
+            const picker = document.createElement("div");
+            picker.className = "quick-reaction-picker";
+            picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
+            
+            const quickEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
+            quickEmojis.forEach(em => {
+                const emBtn = document.createElement("button");
+                emBtn.type = "button";
+                emBtn.textContent = em;
+                emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
+                emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
+                emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
+                emBtn.addEventListener("click", async (ev) => {
+                    ev.stopPropagation();
+                    picker.remove();
+                    await toggleMessageReaction(msgId, em, messageElement);
                 });
+                picker.appendChild(emBtn);
+            });
 
-                btn.style.position = "relative";
-                btn.appendChild(picker);
-                existingPickers.push(picker);
-            } else {
-                const emojiToToggle = btn.getAttribute("data-emoji");
-                if (emojiToToggle) {
-                    await toggleMessageReaction(msgId, emojiToToggle, msg.reactions || {}, messageElement);
-                }
+            addBtn.style.position = "relative";
+            addBtn.appendChild(picker);
+            existingPickers.push(picker);
+        } else if (pillBtn) {
+            e.stopPropagation();
+            const emojiToToggle = pillBtn.getAttribute("data-emoji");
+            if (emojiToToggle) {
+                await toggleMessageReaction(msgId, emojiToToggle, messageElement);
             }
-        });
-    });
+        }
+    };
 }
 
-let existingPickers = [];
-document.addEventListener("click", () => {
-    existingPickers.forEach(p => p.remove());
-    existingPickers = [];
-});
-
-async function toggleMessageReaction(msgId, emoji, currentReactions, messageElement) {
+async function toggleMessageReaction(msgId, emoji, messageElement) {
     if (currentUsername === "Guest") return;
+
+    const msgDocRef = doc(db, "messages", msgId);
+    const snap = await getDoc(msgDocRef);
+    if (!snap.exists()) return;
+
+    const msgData = snap.data();
+    const currentReactions = msgData.reactions || {};
     const updatedReactions = JSON.parse(JSON.stringify(currentReactions));
     
     if (!updatedReactions[emoji]) {
@@ -1104,17 +1096,14 @@ async function toggleMessageReaction(msgId, emoji, currentReactions, messageElem
         updatedReactions[emoji].push(currentUsername);
     }
 
-    localReactionsCache.set(msgId, updatedReactions);
-    msg.reactions = updatedReactions;
-
     const reactionsContainerEl = messageElement.querySelector(".message-reactions-container");
     if (reactionsContainerEl) {
         reactionsContainerEl.outerHTML = renderReactionsHTML(updatedReactions);
-        attachReactionHandlers(messageElement, msgId, msg);
+        attachReactionHandlers(messageElement, msgId, msgData);
     }
 
     try {
-        await updateDoc(doc(db, "messages", msgId), {
+        await updateDoc(msgDocRef, {
             reactions: updatedReactions
         });
     } catch (err) {
