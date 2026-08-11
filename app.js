@@ -141,7 +141,7 @@ if (viewUserAvatar && viewUserAvatar.parentNode) {
     profilePfpWrapper = document.createElement("div");
     profilePfpWrapper.style.cssText = "position: relative; display: inline-block; margin: 0 auto 15px auto;";
     viewUserAvatar.parentNode.insertBefore(profilePfpWrapper, viewUserAvatar);
-    profilePfpWrapper.appendChild(viewUserAvatar);
+    profilePfpWrapper.appendChild(profileUserAvatar);
     
     profileStatusDot = document.createElement("span");
     profileStatusDot.id = "profile-modal-status-dot";
@@ -162,6 +162,9 @@ let unsubscribeUserProfiles = new Map();
 let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
+
+// In-memory cache for message reactions to ensure immediate optimistic UI rendering
+const localReactionsCache = new Map();
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
@@ -394,7 +397,6 @@ const avatarModalContent = document.querySelector("#avatar-selector-overlay .mod
 if (avatarModalContent) {
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(el => el.remove());
     
-    // Customization requested: "dont add it in THE BIO ass it in the menu where bio is and i dont wnat an emoji just a circle is ok"
     const customPfpBtn = document.createElement("button");
     customPfpBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
     customPfpBtn.style.cssText = "width: 100%; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;";
@@ -848,7 +850,6 @@ function loadMessagesFeed() {
         });
     } else {
         chatRoomTitle.textContent = "global chat";
-        // Bugfix requested: "theres a bug that if u go to dms and exit back to global chat the photo sending buttton remains pls delete it"
         if (photoBtn) {
             photoBtn.classList.add("hidden");
             photoBtn.style.display = "none";
@@ -887,6 +888,11 @@ function loadMessagesFeed() {
             }
 
             if (!matchesRoom) continue;
+
+            // Merge local optimistic reactions cache if present
+            if (localReactionsCache.has(msgId)) {
+                msg.reactions = localReactionsCache.get(msgId);
+            }
 
             if (!renderedMessageIds.has(msgId)) {
                 renderedMessageIds.add(msgId);
@@ -932,20 +938,7 @@ function loadMessagesFeed() {
 
                 // Render reactions container
                 const reactionsData = msg.reactions || {};
-                let reactionsHTML = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">`;
-                for (const [emoji, usersList] of Object.entries(reactionsData)) {
-                    if (!Array.isArray(usersList) || usersList.length === 0) continue;
-                    const hasReacted = usersList.includes(currentUsername);
-                    reactionsHTML += `
-                        <button type="button" class="reaction-pill ${hasReacted ? 'user-reacted' : ''}" data-emoji="${emoji}" style="background: ${hasReacted ? 'var(--primary-color)' : 'var(--card-bg)'}; color: ${hasReacted ? '#fff' : 'var(--text-color)'}; border: 1px solid var(--border-color); border-radius: 12px; padding: 2px 8px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                            <span>${emoji}</span>
-                            <span>${usersList.length}</span>
-                        </button>
-                    `;
-                }
-                reactionsHTML += `
-                    <button type="button" class="add-reaction-trigger-btn" title="Add reaction" style="background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; padding: 2px 6px; font-size: 11px; cursor: pointer; color: var(--text-muted);">&#43;</button>
-                </div>`;
+                let reactionsHTML = renderReactionsHTML(reactionsData);
 
                 const avatarImgElement = document.createElement("img");
                 avatarImgElement.className = "msg-avatar-img";
@@ -970,50 +963,7 @@ function loadMessagesFeed() {
                 div.prepend(avatarImgElement);
 
                 // Setup reaction buttons event handlers
-                div.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
-                    btn.addEventListener("click", async (e) => {
-                        e.stopPropagation();
-                        if (currentUsername === "Guest") {
-                            authOverlay.classList.remove("hidden");
-                            return;
-                        }
-
-                        if (btn.classList.contains("add-reaction-trigger-btn")) {
-                            // Show quick reaction popup picker
-                            existingPickers.forEach(p => p.remove());
-                            existingPickers = [];
-
-                            const picker = document.createElement("div");
-                            picker.className = "quick-reaction-picker";
-                            picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
-                            
-                            const quickEmojis = ["👍", "❤️", "😂", "🔥", "🎉", "💩"];
-                            quickEmojis.forEach(em => {
-                                const emBtn = document.createElement("button");
-                                emBtn.type = "button";
-                                emBtn.textContent = em;
-                                emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
-                                emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
-                                emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
-                                emBtn.addEventListener("click", async (ev) => {
-                                    ev.stopPropagation();
-                                    picker.remove();
-                                    await toggleMessageReaction(msgId, em, msg.reactions || {});
-                                });
-                                picker.appendChild(emBtn);
-                            });
-
-                            btn.style.position = "relative";
-                            btn.appendChild(picker);
-                            existingPickers.push(picker);
-                        } else {
-                            const emojiToToggle = btn.getAttribute("data-emoji");
-                            if (emojiToToggle) {
-                                await toggleMessageReaction(msgId, emojiToToggle, msg.reactions || {});
-                            }
-                        }
-                    });
-                });
+                attachReactionHandlers(div, msgId, msg);
 
                 if (isSent) {
                     const delBtn = div.querySelector(".delete-msg-btn");
@@ -1042,6 +992,17 @@ function loadMessagesFeed() {
                 });
 
                 messagesContainer.appendChild(div);
+            } else {
+                // If message is already rendered, update its reactions container dynamically for real-time sync without full re-render
+                const existingMsgEl = document.getElementById(`msg-${msgId}`);
+                if (existingMsgEl) {
+                    let reactionsContainerEl = existingMsgEl.querySelector(".message-reactions-container");
+                    if (reactionsContainerEl) {
+                        reactionsContainerEl.outerHTML = renderReactionsHTML(msg.reactions || {});
+                        const updatedContainer = existingMsgEl.querySelector(".message-reactions-container");
+                        attachReactionHandlers(existingMsgEl, msgId, msg);
+                    }
+                }
             }
         }
 
@@ -1054,13 +1015,83 @@ function loadMessagesFeed() {
     });
 }
 
+function renderReactionsHTML(reactionsData) {
+    let html = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">`;
+    for (const [emoji, usersList] of Object.entries(reactionsData)) {
+        if (!Array.isArray(usersList) || usersList.length === 0) continue;
+        const hasReacted = usersList.includes(currentUsername);
+        html += `
+            <button type="button" class="reaction-pill ${hasReacted ? 'user-reacted' : ''}" data-emoji="${emoji}" style="background: ${hasReacted ? 'var(--primary-color)' : 'var(--card-bg)'}; color: ${hasReacted ? '#fff' : 'var(--text-color)'}; border: 1px solid var(--border-color); border-radius: 12px; padding: 2px 8px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                <span>${emoji}</span>
+                <span>${usersList.length}</span>
+            </button>
+        `;
+    }
+    html += `
+        <button type="button" class="add-reaction-trigger-btn" title="Add reaction" style="background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; padding: 2px 6px; font-size: 11px; cursor: pointer; color: var(--text-muted);">&#43;</button>
+    </div>`;
+    return html;
+}
+
+function attachReactionHandlers(messageElement, msgId, msg) {
+    messageElement.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
+        // Remove existing listener clones by replacing or handling safely
+        btn.replaceWith(btn.cloneNode(true));
+    });
+
+    messageElement.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (currentUsername === "Guest") {
+                authOverlay.classList.remove("hidden");
+                return;
+            }
+
+            if (btn.classList.contains("add-reaction-trigger-btn")) {
+                existingPickers.forEach(p => p.remove());
+                existingPickers = [];
+
+                const picker = document.createElement("div");
+                picker.className = "quick-reaction-picker";
+                picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
+                
+                // Only the requested 6 emojis
+                const quickEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
+                quickEmojis.forEach(em => {
+                    const emBtn = document.createElement("button");
+                    emBtn.type = "button";
+                    emBtn.textContent = em;
+                    emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
+                    emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
+                    emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
+                    emBtn.addEventListener("click", async (ev) => {
+                        ev.stopPropagation();
+                        picker.remove();
+                        await toggleMessageReaction(msgId, em, msg.reactions || {}, messageElement);
+                    });
+                    picker.appendChild(emBtn);
+                });
+
+                btn.style.position = "relative";
+                btn.appendChild(picker);
+                existingPickers.push(picker);
+            } else {
+                const emojiToToggle = btn.getAttribute("data-emoji");
+                if (emojiToToggle) {
+                    await toggleMessageReaction(msgId, emojiToToggle, msg.reactions || {}, messageElement);
+                }
+            }
+        });
+    });
+}
+
 let existingPickers = [];
 document.addEventListener("click", () => {
     existingPickers.forEach(p => p.remove());
     existingPickers = [];
 });
 
-async function toggleMessageReaction(msgId, emoji, currentReactions) {
+async function toggleMessageReaction(msgId, emoji, currentReactions, messageElement) {
     if (currentUsername === "Guest") return;
     const updatedReactions = JSON.parse(JSON.stringify(currentReactions));
     
@@ -1076,6 +1107,17 @@ async function toggleMessageReaction(msgId, emoji, currentReactions) {
         }
     } else {
         updatedReactions[emoji].push(currentUsername);
+    }
+
+    // Save to local cache for instant feedback
+    localReactionsCache.set(msgId, updatedReactions);
+    msg.reactions = updatedReactions;
+
+    // Instantly update UI without page reload
+    const reactionsContainerEl = messageElement.querySelector(".message-reactions-container");
+    if (reactionsContainerEl) {
+        reactionsContainerEl.outerHTML = renderReactionsHTML(updatedReactions);
+        attachReactionHandlers(messageElement, msgId, msg);
     }
 
     try {
