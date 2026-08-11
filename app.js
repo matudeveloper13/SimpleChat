@@ -41,7 +41,6 @@ document.body.appendChild(fileInput);
 let selectedImageFile = null;
 let replyingToMessage = null;
 
-// DOM Elements & Core Application Layout Config Objects
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const authOverlay = document.getElementById("auth-overlay");
@@ -334,8 +333,13 @@ cropOverlay.innerHTML = `
 document.body.appendChild(cropOverlay);
 
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
-if (avatarModalContent) {
-    avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
+if (avatarModalContent && !avatarModalContent.querySelector(".custom-pfp-trigger-btn")) {
+    const customPfpBtn = document.createElement("button");
+    customPfpBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
+    customPfpBtn.textContent = "Upload Custom PFP";
+    customPfpBtn.style.cssText = "width: 100%; margin-top: 12px;";
+    customPfpBtn.addEventListener("click", () => customAvatarFileInput.click());
+    avatarModalContent.appendChild(customPfpBtn);
 }
 
 let activeImageObj = null;
@@ -789,7 +793,6 @@ function loadMessagesFeed() {
                 const isSent = msg.username === currentUsername;
                 const div = document.createElement("div");
                 div.className = `msg ${isSent ? 'sent' : 'received'}`;
-                div.style.position = "relative";
                 const readableTime = formatMessageTime(msg.timestamp);
 
                 let contentHTML = "";
@@ -827,82 +830,31 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // EXTENDED FULLY VERIFIED TEMPLATE CONFIGURATION MAPPING EXACT THREE-DOTS AND AVATAR PLACEMENT
-                const extendedOptionMenuMarginTop = "24px";
-                const extendedOptionMenuPositionTop = "22px";
-                const extendedOptionMenuMinWidth = "90px";
-                const extendedOptionMenuBtnPaddingVert = "6px";
-                const extendedOptionMenuBtnPaddingHoriz = "12px";
-
                 if (isSent) {
                     div.innerHTML = `
-                        <div class="msg-content" style="position: relative; display: flex; align-items: flex-start; flex-grow: 1; min-width: 0;">
-                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
-                                <div class="msg-header" style="justify-content: flex-end; display: flex; align-items: center;">
-                                    <span class="msg-time" style="font-size: 10px; color: var(--text-muted);">${readableTime}</span>
-                                </div>
-                                ${replyHTML}
-                                <div class="msg-bubble" style="word-break: break-word; overflow-wrap: break-word;">${contentHTML}</div>
+                        <div class="msg-content">
+                            <div class="msg-header">
+                                <span class="msg-time">${readableTime}</span>
                             </div>
+                            ${replyHTML}
+                            <div class="msg-bubble">${contentHTML}</div>
                         </div>
-                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: ${extendedOptionMenuMarginTop}; position: relative; flex-shrink: 0;">
-                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: ${extendedOptionMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${extendedOptionMenuMinWidth}; padding: 4px 0;">
-                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${extendedOptionMenuBtnPaddingVert} ${extendedOptionMenuBtnPaddingHoriz}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
-                            </div>
-                        </div>
-                        <div class="avatar-slot" style="display: inline-flex; align-items: flex-start; flex-shrink: 0; margin-left: 8px;"></div>
                     `;
                 } else {
                     div.innerHTML = `
-                        <div class="avatar-slot" style="display: inline-flex; align-items: flex-start; flex-shrink: 0; margin-right: 8px;"></div>
-                        <div class="msg-content" style="position: relative; display: flex; align-items: flex-start; flex-grow: 1; min-width: 0;">
-                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
-                                <div class="msg-header" style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="msg-author" style="font-weight: bold; cursor: pointer;">${renderUsernameWithCrown(msg.username)}</span>
-                                    <span class="msg-time" style="font-size: 10px; color: var(--text-muted);">${readableTime}</span>
-                                </div>
-                                ${replyHTML}
-                                <div class="msg-bubble" style="word-break: break-word; overflow-wrap: break-word;">${contentHTML}</div>
+                        <div class="msg-content">
+                            <div class="msg-header">
+                                <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
+                                <span class="msg-time">${readableTime}</span>
                             </div>
-                        </div>
-                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: ${extendedOptionMenuMarginTop}; position: relative; flex-shrink: 0;">
-                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: ${extendedOptionMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${extendedOptionMenuMinWidth}; padding: 4px 0;">
-                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${extendedOptionMenuBtnPaddingVert} ${extendedOptionMenuBtnPaddingHoriz}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
-                            </div>
+                            ${replyHTML}
+                            <div class="msg-bubble">${contentHTML}</div>
                         </div>
                     `;
+                    div.prepend(avatarImgElement);
                 }
 
-                div.querySelector(".avatar-slot").appendChild(avatarImgElement);
-
-                const dotsBtn = div.querySelector(".msg-three-dots-btn");
-                const dropdownMenu = div.querySelector(".msg-dropdown-menu");
-                const replyOptionBtn = div.querySelector(".msg-reply-option-btn");
-
-                dotsBtn.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    document.querySelectorAll(".msg-dropdown-menu").forEach(menu => {
-                        if (menu !== dropdownMenu) {
-                            menu.classList.add("hidden");
-                            menu.style.display = "none";
-                        }
-                    });
-                    const isHidden = dropdownMenu.classList.contains("hidden");
-                    if (isHidden) {
-                        dropdownMenu.classList.remove("hidden");
-                        dropdownMenu.style.display = "block";
-                    } else {
-                        dropdownMenu.classList.add("hidden");
-                        dropdownMenu.style.display = "none";
-                    }
-                });
-
-                replyOptionBtn.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    dropdownMenu.classList.add("hidden");
-                    dropdownMenu.style.display = "none";
+                div.addEventListener("dblclick", () => {
                     if (currentUsername === "Guest") return;
                     replyingToMessage = msg;
                     replyPreviewText.innerHTML = `Replying to <b>@${sanitizeMessageHTML(msg.username)}</b>: ${sanitizeMessageHTML(msg.text || msg.mediaType || "Attachment")}`;
@@ -915,7 +867,7 @@ function loadMessagesFeed() {
                     el.addEventListener("click", () => openUserProfileModal(msg.username));
                 });
 
-messagesContainer.appendChild(div);
+                messagesContainer.appendChild(div);
             }
         }
 
@@ -927,13 +879,6 @@ messagesContainer.appendChild(div);
         }
     });
 }
-
-document.addEventListener("click", () => {
-    document.querySelectorAll(".msg-dropdown-menu").forEach(menu => {
-        menu.classList.add("hidden");
-        menu.style.display = "none";
-    });
-});
 
 async function openUserProfileModal(username) {
     viewingProfileUsername = username;
@@ -1069,7 +1014,7 @@ function openDirectMessage(friendName) {
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
-    if (photoBtn) photoBtn.classList.remove("hidden");
+    if (photoBtn) photoBtn.classList.add("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     loadMessagesFeed();
