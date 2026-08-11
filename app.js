@@ -195,26 +195,24 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
     }
 });
 
-// --- MUSIC PLAYER PANEL FEATURE ---
+// --- MUSIC PLAYER PANEL FEATURE (UPPER CORNER) ---
 let currentAudio = null;
 
 const musicBtn = document.createElement("button");
 musicBtn.id = "music-panel-btn";
 musicBtn.className = "btn btn-secondary";
-musicBtn.style.cssText = "margin-left: 10px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;";
-musicBtn.textContent = "🎵 Music";
-if (chatRoomTitle && chatRoomTitle.parentNode) {
-    chatRoomTitle.parentNode.appendChild(musicBtn);
-}
+musicBtn.style.cssText = "position: fixed; top: 15px; right: 15px; z-index: 99998; width: 40px; height: 40px; border-radius: 50%; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);";
+musicBtn.innerHTML = "🎵";
+document.body.appendChild(musicBtn);
 
 const musicPanel = document.createElement("div");
 musicPanel.id = "music-panel";
 musicPanel.className = "hidden";
-musicPanel.style.cssText = "position: absolute; top: 60px; right: 20px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; z-index: 99999; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);";
+musicPanel.style.cssText = "position: fixed; top: 65px; right: 15px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; z-index: 99999; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);";
 musicPanel.innerHTML = `
     <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-color);">Music Player</h4>
     <div id="music-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
-        <button class="btn btn-secondary music-track-btn" data-src="Relaxing.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ Relaxing.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="relaxing.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ relaxing.mp3</button>
         <button class="btn btn-secondary music-track-btn" data-src="ordinary.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ ordinary.mp3</button>
         <button class="btn btn-secondary music-track-btn" data-src="meep.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ meep.mp3</button>
         <button class="btn btn-secondary music-track-btn" data-src="imagination.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ imagination.mp3</button>
@@ -228,9 +226,6 @@ document.body.appendChild(musicPanel);
 
 musicBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    const rect = musicBtn.getBoundingClientRect();
-    musicPanel.style.top = `${rect.bottom + 8}px`;
-    musicPanel.style.right = `${window.innerWidth - rect.right}px`;
     musicPanel.classList.toggle("hidden");
 });
 
@@ -249,7 +244,7 @@ musicPanel.querySelectorAll(".music-track-btn").forEach(btn => {
         }
         currentAudio = new Audio(src);
         currentAudio.loop = isLooping;
-        currentAudio.play().catch(err => alert("Could to play audio file: " + err.message));
+        currentAudio.play().catch(err => alert("Could not play audio file: " + err.message));
         
         musicPanel.querySelectorAll(".music-track-btn").forEach(b => b.style.fontWeight = "normal");
         btn.style.fontWeight = "bold";
