@@ -24,9 +24,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-function renderUsernameWithCrown(username) {
+function renderUsernameWithCrown(username, isGroupContext = false, groupCreator = null) {
     const cleanName = (username || "").trim();
-    if (cleanName === "matubanana" || cleanName === "matubanana2") {
+    const hasCrown = cleanName === "matubanana" || cleanName === "matubanana2" || (isGroupContext && cleanName === groupCreator);
+    if (hasCrown) {
         return `${sanitizeMessageHTML(cleanName)} <img src="crown.png" style="width: 14px; height: 14px; vertical-align: middle; display: inline-block; margin-left: 3px;" alt="Crown" />`;
     }
     return sanitizeMessageHTML(cleanName);
@@ -41,6 +42,7 @@ document.body.appendChild(fileInput);
 let selectedImageFile = null;
 let replyingToMessage = null;
 let presenceInterval = null;
+let currentGroupData = null; // Track currently active group data for crown rendering
 
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
@@ -63,6 +65,14 @@ if (exitDmBtn) {
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.cursor = "pointer";
 }
+
+// Revert main chat area to single fluid vertical layout (removing any sidebars)
+const globalChatSection = document.getElementById("global-chat-section");
+if (globalChatSection) {
+    globalChatSection.style.display = "flex";
+    globalChatSection.style.flexDirection = "column";
+}
+document.querySelectorAll("#group-members-sidebar").forEach(el => el.remove());
 
 const replyPreviewBar = document.createElement("div");
 replyPreviewBar.id = "reply-preview-bar";
@@ -91,7 +101,6 @@ function clearReplyState() {
 
 const navFriendsBtn = document.getElementById("nav-friends-btn");
 const backToChatBtn = document.getElementById("back-to-chat-btn");
-const globalChatSection = document.getElementById("global-chat-section");
 const friendsSection = document.getElementById("friends-section");
 
 const addFriendInput = document.getElementById("add-friend-input");
@@ -195,10 +204,8 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
     }
 });
 
-// --- MUSIC PLAYER PANEL FEATURE (SINGLE UNIQUE BUTTON) ---
+// --- MUSIC PLAYER PANEL FEATURE ---
 let currentAudio = null;
-
-// Completely clear out any duplicate music buttons from previous injections
 document.querySelectorAll("#music-panel-btn").forEach(el => el.remove());
 
 const musicBtn = document.createElement("button");
@@ -275,7 +282,7 @@ document.getElementById("music-stop-btn")?.addEventListener("click", () => {
 });
 // -------------------------------------------------
 
-// --- FALLING BACKGROUND DOTS & RARE EMOJI EASTER EGG ---
+// --- FALLING BACKGROUND DOTS & EMOJI EASTER EGG ---
 document.querySelectorAll("#bg-falling-dots-canvas").forEach(el => el.remove());
 
 const bgCanvas = document.createElement("canvas");
@@ -320,8 +327,6 @@ function animateFallingBackground() {
         if (p.y > bgHeight + 20) {
             p.y = -20;
             p.x = Math.random() * bgWidth;
-            
-            // Rare chance to turn into an emoji easter egg when recycling from top (approx 5% chance - very rare)
             if (Math.random() < 0.05) {
                 p.isEmoji = true;
                 p.emoji = easterEggEmojis[Math.floor(Math.random() * easterEggEmojis.length)];
@@ -469,7 +474,6 @@ function formatMessageTime(timestamp) {
     
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const monthStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     
@@ -515,10 +519,10 @@ backToChatBtn?.addEventListener("click", () => {
 
 exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
+    currentGroupData = null;
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.display = "none";
-    groupSidebar.classList.add("hidden");
     if (photoBtn) {
         photoBtn.classList.add("hidden");
         photoBtn.style.display = "none";
@@ -585,7 +589,6 @@ loginForm?.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUsername = user.email.split("@")[0];
-        
         await fetchGlobalBannedUsers();
 
         myMiniUsername.innerHTML = renderUsernameWithCrown(currentUsername);
@@ -1254,10 +1257,13 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
+                const isGroupCtx = currentChatRoom.startsWith("group_");
+                const groupCreatorName = currentGroupData ? currentGroupData.creator : null;
+
                 div.innerHTML = `
                     <div class="msg-content">
                         <div class="msg-header">
-                            ${!isSent ? `<span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>` : ""}
+                            ${!isSent ? `<span class="msg-author">${renderUsernameWithCrown(msg.username, isGroupCtx, groupCreatorName)}</span>` : ""}
                             <span class="msg-time">${readableTime}</span>
                             ${deleteBtnHTML}
                         </div>
@@ -1565,10 +1571,10 @@ async function loadFriendsAndRequests() {
 
 function openDirectMessage(friendName) {
     currentChatRoom = friendName;
+    currentGroupData = null;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
-    groupSidebar.classList.add("hidden");
     if (photoBtn) {
         photoBtn.classList.remove("hidden");
         photoBtn.style.display = "inline-block";
@@ -1596,7 +1602,7 @@ async function acceptFriendRequest(friendName) {
     loadFriendsAndGroupsLists();
 }
 
-// --- GROUP CHAT EXTENSION & MODIFICATIONS ---
+// --- REDESIGNED GROUP CHAT (CLEAN, INSTANT, NO SIDEBAR, WITH LEAVE BUTTON) ---
 
 const friendsSectionElement = document.getElementById("friends-section");
 const createGroupBtn = document.createElement("button");
@@ -1623,18 +1629,14 @@ groupModalOverlay.innerHTML = `
 `;
 document.body.appendChild(groupModalOverlay);
 
-const groupSidebar = document.createElement("div");
-groupSidebar.id = "group-members-sidebar";
-groupSidebar.className = "hidden";
-groupSidebar.style.cssText = "width: 200px; background: var(--card-bg); border-left: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; height: 100%; box-sizing: border-box;";
-groupSidebar.innerHTML = `
-    <h4 style="font-size: 13px; color: var(--text-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin: 0;">Group Members</h4>
-    <div id="group-sidebar-list" style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto;"></div>
-`;
-if (globalChatSection) {
-    globalChatSection.style.display = "flex";
-    globalChatSection.style.flexDirection = "row";
-    globalChatSection.appendChild(groupSidebar);
+// Leave Group Button next to Exit DM
+const leaveGroupBtn = document.createElement("button");
+leaveGroupBtn.id = "leave-group-btn";
+leaveGroupBtn.className = "hidden btn btn-secondary";
+leaveGroupBtn.style.cssText = "margin-left: 8px; background: #ef4444; color: #fff; border: none; padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;";
+leaveGroupBtn.textContent = "🚪 Leave Group";
+if (exitDmBtn && exitDmBtn.parentNode) {
+    exitDmBtn.parentNode.insertBefore(leaveGroupBtn, exitDmBtn.nextSibling);
 }
 
 const groupsListSection = document.createElement("div");
@@ -1675,7 +1677,10 @@ document.getElementById("cancel-group-btn")?.addEventListener("click", () => {
     groupModalOverlay.classList.add("hidden");
 });
 
+let isCreatingGroup = false; // Prevent multi-click spam duplicate groups
 document.getElementById("confirm-group-btn")?.addEventListener("click", async () => {
+    if (isCreatingGroup) return;
+
     const groupNameInput = document.getElementById("group-name-input").value.trim();
     const statusMsg = document.getElementById("group-status-msg");
     if (!groupNameInput) {
@@ -1690,22 +1695,28 @@ document.getElementById("confirm-group-btn")?.addEventListener("click", async ()
     }
 
     const members = [currentUsername, ...checkedFriends];
-    statusMsg.textContent = "Creating group...";
+    statusMsg.textContent = "Creating group instantly...";
+    isCreatingGroup = true;
 
     try {
-        await addDoc(collection(db, "groups"), {
+        const docRef = await addDoc(collection(db, "groups"), {
             name: groupNameInput,
             creator: currentUsername,
             members: members,
             createdAt: serverTimestamp()
         });
+        
         statusMsg.style.color = "var(--success, #22c55e)";
-        statusMsg.textContent = "Group created successfully!";
+        statusMsg.textContent = "Group created!";
+        
         setTimeout(() => {
             groupModalOverlay.classList.add("hidden");
+            isCreatingGroup = false;
             loadFriendsAndGroupsLists();
-        }, 1200);
+            openGroupChat(docRef.id, { name: groupNameInput, creator: currentUsername, members });
+        }, 300);
     } catch (err) {
+        isCreatingGroup = false;
         statusMsg.style.color = "#ef4444";
         statusMsg.textContent = "Error: " + err.message;
     }
@@ -1745,31 +1756,67 @@ async function loadFriendsAndGroupsLists() {
 
 function openGroupChat(groupId, groupData) {
     currentChatRoom = `group_${groupId}`;
+    currentGroupData = groupData;
     chatRoomTitle.textContent = `Group: ${groupData.name}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
+    leaveGroupBtn.classList.remove("hidden");
+    leaveGroupBtn.style.display = "inline-block";
+
     if (photoBtn) {
         photoBtn.classList.remove("hidden");
         photoBtn.style.display = "inline-block";
     }
 
-    groupSidebar.classList.remove("hidden");
-    const sidebarList = document.getElementById("group-sidebar-list");
-    sidebarList.innerHTML = "";
-    
-    (groupData.members || []).forEach(member => {
-        const isCreator = member === groupData.creator;
-        const memDiv = document.createElement("div");
-        memDiv.style.cssText = "font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 4px; color: var(--text-color);";
-        memDiv.innerHTML = `
-            <span>@${sanitizeMessageHTML(member)}</span>
-            ${isCreator ? `<img src="crown.png" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;" alt="Creator Crown" title="Group Creator" />` : ""}
-        `;
-        sidebarList.appendChild(memDiv);
-    });
-
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     loadMessagesFeed();
 }
-// -------------------------------------------------
+
+leaveGroupBtn?.addEventListener("click", async () => {
+    if (!currentChatRoom.startsWith("group_")) return;
+    const groupId = currentChatRoom.replace("group_", "");
+    
+    if (!confirm("Are you sure you want to leave this group chat?")) return;
+
+    try {
+        const groupRef = doc(db, "groups", groupId);
+        const groupSnap = await getDoc(groupRef);
+        if (groupSnap.exists()) {
+            const data = groupSnap.data();
+            const updatedMembers = (data.members || []).filter(m => m !== currentUsername);
+            
+            if (updatedMembers.length === 0) {
+                await deleteDoc(groupRef);
+            } else {
+                let newCreator = data.creator;
+                if (data.creator === currentUsername) {
+                    newCreator = updatedMembers[0];
+                }
+                await updateDoc(groupRef, {
+                    members: updatedMembers,
+                    creator: newCreator
+                });
+            }
+        }
+    } catch (e) {}
+
+    currentChatRoom = "global";
+    currentGroupData = null;
+    chatRoomTitle.textContent = "global chat";
+    exitDmBtn.classList.add("hidden");
+    exitDmBtn.style.display = "none";
+    leaveGroupBtn.classList.add("hidden");
+    leaveGroupBtn.style.display = "none";
+    if (photoBtn) {
+        photoBtn.classList.add("hidden");
+        photoBtn.style.display = "none";
+    }
+    loadMessagesFeed();
+});
+
+exitDmBtn?.addEventListener("click", () => {
+    leaveGroupBtn.classList.add("hidden");
+    leaveGroupBtn.style.display = "none";
+});
+// -----------------------------------------------------------------------------
