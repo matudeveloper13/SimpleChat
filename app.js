@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit, getDocs 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -95,42 +95,11 @@ const photoBtn = document.getElementById("photo-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
-const typingIndicatorBox = document.getElementById("typing-indicator-box");
-const typingTextLabel = document.getElementById("typing-text-label");
-
-const typingStyleTag = document.createElement("style");
-typingStyleTag.innerHTML = `
-    #typing-indicator-box {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
-    .typing-dots span {
-        height: 6px;
-        width: 6px;
-        float: left;
-        margin: 0 1px;
-        background-color: var(--text-muted);
-        border-radius: 50%;
-        display: inline-block;
-        animation: typingBounce 1.3s infinite ease-in-out;
-    }
-    .typing-dots span:nth-child(2) { animation-delay: -1.1s; }
-    .typing-dots span:nth-child(3) { animation-delay: -0.9s; }
-    @keyframes typingBounce {
-        0%, 60%, 100% { transform: translateY(0); }
-        30% { transform: translateY(-4px); }
-    }
-`;
-document.head.appendChild(typingStyleTag);
-
 // State
 let currentUsername = "Guest";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
-let typingTimeout = null;
 let unsubscribeMessages = null;
-let unsubscribeTyping = null;
 let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
@@ -615,28 +584,6 @@ document.addEventListener("click", (e) => {
     }
 });
 
-messageInput?.addEventListener("input", async () => {
-    if (currentUsername === "Guest") return;
-    const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-    
-    try {
-        const typingDocRef = doc(db, "typing", `${roomKey}_${currentUsername}`);
-        await setDoc(typingDocRef, {
-            username: currentUsername,
-            room: roomKey,
-            lastTypedTime: Date.now(),
-            timestamp: serverTimestamp()
-        });
-
-        if (typingTimeout) clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(async () => {
-            try {
-                await deleteDoc(typingDocRef);
-            } catch(e){}
-        }, 2000);
-    } catch(e){}
-});
-
 messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (currentUsername === "Guest") return;
@@ -684,10 +631,6 @@ messageForm?.addEventListener("submit", async (e) => {
     if (!text) return;
 
     messageInput.value = "";
-    
-    try {
-        await deleteDoc(doc(db, "typing", `${roomKey}_${currentUsername}`));
-    } catch(e){}
 
     await addDoc(collection(db, "messages"), {
         text,
@@ -719,7 +662,6 @@ async function getLiveUserAvatar(username) {
 
 function loadMessagesFeed() {
     if (unsubscribeMessages) unsubscribeMessages();
-    if (unsubscribeTyping) unsubscribeTyping();
 
     renderedMessageIds.clear();
     messagesContainer.innerHTML = "";
@@ -801,51 +743,6 @@ function loadMessagesFeed() {
             isInitialLoad = false;
         } else if (hasNewMessages && isNearBottom) {
             scrollToBottom(true);
-        }
-    });
-
-    const typingQuery = query(collection(db, "typing"));
-    unsubscribeTyping = onSnapshot(typingQuery, async (snap) => {
-        let activeTypingUsers = [];
-        const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
-        const nowTime = Date.now();
-
-        for (const d of snap.docs) {
-            const data = d.data();
-            const matchesRoom = (data.room === currentRoomKey) || 
-                                (currentChatRoom !== "global" && (data.room === `${currentChatRoom}_${currentUsername}` || data.room === `${currentUsername}_${currentChatRoom}`));
-
-            if (matchesRoom && data.username && data.username !== currentUsername) {
-                const typedTime = data.lastTypedTime || 0;
-                const timeDiff = nowTime - typedTime;
-
-                if (typedTime === 0 || timeDiff > 2500) {
-                    try {
-                        await deleteDoc(d.ref);
-                    } catch(e) {}
-                    continue;
-                }
-
-                activeTypingUsers.push(data.username);
-            }
-        }
-
-        if (activeTypingUsers.length > 0) {
-            let typingMessageText = "";
-            if (activeTypingUsers.length === 1) {
-                typingMessageText = `${activeTypingUsers[0]} is typing`;
-            } else if (activeTypingUsers.length === 2) {
-                typingMessageText = `${activeTypingUsers[0]} and ${activeTypingUsers[1]} are typing`;
-            } else {
-                typingMessageText = `multiple users are typing`;
-            }
-
-            typingTextLabel.innerHTML = `${typingMessageText} <span class="typing-dots" style="display:inline-block; margin-left:4px;"><span></span><span></span><span></span></span>`;
-            typingIndicatorBox.classList.remove("hidden");
-            typingIndicatorBox.style.display = "flex";
-        } else {
-            typingIndicatorBox.classList.add("hidden");
-            typingIndicatorBox.style.display = "none";
         }
     });
 }
