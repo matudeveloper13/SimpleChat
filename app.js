@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -762,12 +762,12 @@ function loadMessagesFeed() {
         chatRoomTitle.textContent = "global chat";
     }
 
-    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(50));
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
-        let docsArray = snapshot.docs.reverse();
+        let docsArray = snapshot.docs;
         let hasNewMessages = false;
 
         for (const docSnap of docsArray) {
