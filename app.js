@@ -121,6 +121,21 @@ const viewUserName = document.getElementById("view-user-name");
 const viewUserBio = document.getElementById("view-user-bio");
 const profileFriendActionBtn = document.getElementById("profile-friend-action-btn");
 
+// Setup PFP wrapper and status indicator in view profile modal
+let profilePfpWrapper = null;
+let profileStatusDot = null;
+if (viewUserAvatar && viewUserAvatar.parentNode) {
+    profilePfpWrapper = document.createElement("div");
+    profilePfpWrapper.style.cssText = "position: relative; display: inline-block; margin: 0 auto 15px auto;";
+    viewUserAvatar.parentNode.insertBefore(profilePfpWrapper, viewUserAvatar);
+    profilePfpWrapper.appendChild(viewUserAvatar);
+    
+    profileStatusDot = document.createElement("span");
+    profileStatusDot.id = "profile-modal-status-dot";
+    profileStatusDot.style.cssText = "position: absolute; bottom: 5px; right: 5px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--card-bg);";
+    profilePfpWrapper.appendChild(profileStatusDot);
+}
+
 const emojiBtn = document.getElementById("emoji-btn");
 const photoBtn = document.getElementById("photo-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
@@ -151,7 +166,7 @@ function startPresenceHeartbeat() {
     };
 
     updatePresence();
-    presenceInterval = setInterval(updatePresence, 20000); // Ping every 20 seconds
+    presenceInterval = setInterval(updatePresence, 20000);
 }
 
 function formatMessageTime(timestamp) {
@@ -804,7 +819,6 @@ function loadMessagesFeed() {
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
-        // Track existing message DOM elements to handle deletions cleanly
         const existingDocIds = new Set(snapshot.docs.map(d => d.id));
         renderedMessageIds.forEach(id => {
             if (!existingDocIds.has(id)) {
@@ -870,7 +884,6 @@ function loadMessagesFeed() {
                     `;
                 }
 
-                // Delete button for user's own messages
                 let deleteBtnHTML = "";
                 if (isSent) {
                     deleteBtnHTML = `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>`;
@@ -944,12 +957,33 @@ async function openUserProfileModal(username) {
     profileFriendActionBtn.textContent = "Send Friend Request";
     profileFriendActionBtn.disabled = false;
 
+    if (profileStatusDot) {
+        profileStatusDot.style.background = "#ef4444";
+    }
+
     try {
         const userDoc = await getDoc(doc(db, "users", username));
         if (userDoc.exists()) {
             const data = userDoc.data();
             if (data.avatar) viewUserAvatar.src = data.avatar;
-            if (data.bio) viewUserBio.textContent = data.bio;
+            
+            let isOnline = false;
+            if (data.lastSeen) {
+                const lastSeenDate = data.lastSeen.toDate();
+                const diffSecs = (new Date() - lastSeenDate) / 1000;
+                if (diffSecs < 45) isOnline = true;
+            }
+
+            if (profileStatusDot) {
+                profileStatusDot.style.background = isOnline ? 'var(--success, #22c55e)' : '#ef4444';
+            }
+
+            const bioText = data.bio || "Hey there! I am using SimpleChat.";
+            const statusLabel = isOnline 
+                ? '<span style="color: var(--success, #22c55e); font-weight: 600;">🟢 Online</span>' 
+                : '<span style="color: #ef4444; font-weight: 600;">🔴 Offline</span>';
+            
+            viewUserBio.innerHTML = `<div style="margin-bottom: 8px;">Status: ${statusLabel}</div><div style="color: var(--text-color);">${sanitizeMessageHTML(bioText)}</div>`;
         }
 
         if (currentUsername !== "Guest" && currentUsername !== username) {
@@ -1051,7 +1085,6 @@ async function loadFriendsAndRequests() {
         for (const friend of friends) {
             const avatarUrl = await getLiveUserAvatar(friend);
             
-            // Check online presence based on lastSeen timestamp within the last 45 seconds
             const friendDoc = await getDoc(doc(db, "users", friend));
             let isOnline = false;
             if (friendDoc.exists() && friendDoc.data().lastSeen) {
@@ -1066,11 +1099,11 @@ async function loadFriendsAndRequests() {
                 <div style="display: flex; align-items: center; gap: 10px; position: relative;">
                     <div style="position: relative;">
                         <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; display: block;" />
-                        <span style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: ${isOnline ? 'var(--success, #22c55e)' : '#9ca3af'}; border-radius: 50%; border: 1px solid var(--card-bg);"></span>
+                        <span style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: ${isOnline ? 'var(--success, #22c55e)' : '#ef4444'}; border-radius: 50%; border: 1px solid var(--card-bg);"></span>
                     </div>
                     <span style="font-weight: 600;">DM @${sanitizeMessageHTML(friend)}</span>
                 </div>
-                <span style="font-size: 12px; color: ${isOnline ? 'var(--success, #22c55e)' : 'var(--text-muted)'};">${isOnline ? 'Online' : 'Offline'}</span>
+                <span style="font-size: 12px; color: ${isOnline ? 'var(--success, #22c55e)' : '#ef4444'};">${isOnline ? 'Online' : 'Offline'}</span>
             `;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
