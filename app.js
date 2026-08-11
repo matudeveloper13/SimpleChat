@@ -336,22 +336,6 @@ document.body.appendChild(cropOverlay);
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
-
-    const uploadCustomBtn = document.createElement("button");
-    uploadCustomBtn.type = "button";
-    uploadCustomBtn.className = "btn btn-secondary custom-pfp-trigger-btn";
-    uploadCustomBtn.style.cssText = "width: 100%; height: 44px; border-radius: 6px; margin-top: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;";
-    uploadCustomBtn.textContent = "Upload Custom Profile Picture";
-    
-    uploadCustomBtn.addEventListener("click", () => {
-        if (currentUsername === "Guest") {
-            authOverlay.classList.remove("hidden");
-            return;
-        }
-        customAvatarFileInput.click();
-    });
-    
-    avatarModalContent.insertBefore(uploadCustomBtn, closeAvatarSelector);
 }
 
 let activeImageObj = null;
@@ -843,12 +827,12 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // Match layout orientation: received messages have 3 dots on the right, sent messages have 3 dots on the left (spaced away from the bubble)
+                // FIXED: Sent messages have 3 dots on the left of the message bubble with gap spacing, matching the user's exact specification
                 if (isSent) {
                     div.innerHTML = `
                         <div class="msg-options-container" style="display: flex; align-items: center; margin-right: 12px; margin-top: 24px; position: relative;">
                             <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; left: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
+                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
                                 <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
                             </div>
                         </div>
@@ -877,7 +861,7 @@ function loadMessagesFeed() {
                             </div>
                             <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: 24px; position: relative;">
                                 <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                                <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
+                                <div class="msg-dropdown-menu hidden" style="position: absolute; left: 0; top: 22px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: 90px; padding: 4px 0;">
                                     <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
                                 </div>
                             </div>
@@ -1061,6 +1045,8 @@ async function loadFriendsAndRequests() {
             const avatarUrl = await getLiveUserAvatar(friend);
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
+            
+            // FIXED: Added circular user PFP next to their name in the DM tab list view as requested
             row.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
