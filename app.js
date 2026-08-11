@@ -39,6 +39,7 @@ fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
 let selectedImageFile = null;
+let replyingToMessage = null; // State to track active reply target
 
 // DOM Elements
 const authModalBtn = document.getElementById("auth-modal-btn");
@@ -57,6 +58,32 @@ const messageInput = document.getElementById("message-input");
 const messagesContainer = document.getElementById("messages-container");
 const chatRoomTitle = document.getElementById("chat-room-title");
 const exitDmBtn = document.getElementById("exit-dm-btn");
+
+// Create Reply Preview Bar dynamically above the input form
+const replyPreviewBar = document.createElement("div");
+replyPreviewBar.id = "reply-preview-bar";
+replyPreviewBar.className = "hidden";
+replyPreviewBar.style.cssText = "display: none; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--card-bg); border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-muted);";
+replyPreviewBar.innerHTML = `
+    <div id="reply-preview-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+    <button type="button" id="cancel-reply-btn" style="background: none; border: none; color: var(--text-color); cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&times;</button>
+`;
+if (messageForm && messageForm.parentNode) {
+    messageForm.parentNode.insertBefore(replyPreviewBar, messageForm);
+}
+
+const cancelReplyBtn = document.getElementById("cancel-reply-btn");
+const replyPreviewText = document.getElementById("reply-preview-text");
+
+cancelReplyBtn?.addEventListener("click", () => {
+    clearReplyState();
+});
+
+function clearReplyState() {
+    replyingToMessage = null;
+    replyPreviewBar.classList.add("hidden");
+    replyPreviewBar.style.display = "none";
+}
 
 const navFriendsBtn = document.getElementById("nav-friends-btn");
 const backToChatBtn = document.getElementById("back-to-chat-btn");
@@ -560,14 +587,25 @@ if (discordEmojiGrid) {
 
             const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
             const recipient = currentChatRoom === "global" ? null : currentChatRoom;
-            await addDoc(collection(db, "messages"), {
+            
+            const messagePayload = {
                 mediaUrl: videoSrc,
                 mediaType: "video",
                 username: currentUsername,
                 room: roomKey,
                 recipient: recipient,
                 timestamp: serverTimestamp()
-            });
+            };
+
+            if (replyingToMessage) {
+                messagePayload.replyTo = {
+                    username: replyingToMessage.username,
+                    text: replyingToMessage.text || (replyingToMessage.mediaType ? `[${replyingToMessage.mediaType}]` : "Attachment")
+                };
+            }
+
+            await addDoc(collection(db, "messages"), messagePayload);
+            clearReplyState();
         });
         discordEmojiGrid.appendChild(wrapper);
     });
@@ -607,14 +645,25 @@ messageForm?.addEventListener("submit", async (e) => {
             const data = await res.json();
             if (data.success) {
                 messageInput.value = "";
-                await addDoc(collection(db, "messages"), {
+                
+                const messagePayload = {
                     mediaUrl: data.data.url,
                     mediaType: "image",
                     username: currentUsername,
                     room: roomKey,
                     recipient: recipient,
                     timestamp: serverTimestamp()
-                });
+                };
+
+                if (replyingToMessage) {
+                    messagePayload.replyTo = {
+                        username: replyingToMessage.username,
+                        text: replyingToMessage.text || "[image]"
+                    };
+                }
+
+                await addDoc(collection(db, "messages"), messagePayload);
+                clearReplyState();
                 scrollToBottom(true);
             } else {
                 alert("Upload failed: " + data.error.message);
@@ -632,13 +681,23 @@ messageForm?.addEventListener("submit", async (e) => {
 
     messageInput.value = "";
 
-    await addDoc(collection(db, "messages"), {
+    const messagePayload = {
         text,
         username: currentUsername,
         room: roomKey,
         recipient: recipient,
         timestamp: serverTimestamp()
-    });
+    };
+
+    if (replyingToMessage) {
+        messagePayload.replyTo = {
+            username: replyingToMessage.username,
+            text: replyingToMessage.text || (replyingToMessage.mediaType ? `[${replyingToMessage.mediaType}]` : "Attachment")
+        };
+    }
+
+    await addDoc(collection(db, "messages"), messagePayload);
+    clearReplyState();
     scrollToBottom(true);
 });
 
@@ -717,6 +776,17 @@ function loadMessagesFeed() {
                     contentHTML = sanitizeMessageHTML(msg.text || "");
                 }
 
+                // Append reply attribution snippet if message is a reply
+                let replyHTML = "";
+                if (msg.replyTo) {
+                    const snippetText = (msg.replyTo.text || "").length > 40 ? msg.replyTo.text.substring(0, 40) + "..." : (msg.replyTo.text || "");
+                    replyHTML = `
+                        <div class="msg-reply-snippet" style="font-size: 11px; opacity: 0.75; border-left: 2px solid var(--primary-color); padding-left: 6px; margin-bottom: 4px;">
+                            Replying to <b>@${sanitizeMessageHTML(msg.replyTo.username)}</b>: ${sanitizeMessageHTML(snippetText)}
+                        </div>
+                    `;
+                }
+
                 const effectiveAvatar = await getLiveUserAvatar(msg.username);
 
                 div.innerHTML = `
@@ -726,9 +796,20 @@ function loadMessagesFeed() {
                             <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
                             <span class="msg-time">${readableTime}</span>
                         </div>
+                        ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
                     </div>
                 `;
+
+                // Add a reply action/button context or double click handler
+                div.addEventListener("dblclick", () => {
+                    if (currentUsername === "Guest") return;
+                    replyingToMessage = msg;
+                    replyPreviewText.innerHTML = `Replying to <b>@${sanitizeMessageHTML(msg.username)}</b>: ${sanitizeMessageHTML(msg.text || msg.mediaType || "Attachment")}`;
+                    replyPreviewBar.classList.remove("hidden");
+                    replyPreviewBar.style.display = "flex";
+                    messageInput.focus();
+                });
 
                 div.querySelectorAll(".msg-avatar-img, .msg-author").forEach(el => {
                     el.addEventListener("click", () => openUserProfileModal(msg.username));
