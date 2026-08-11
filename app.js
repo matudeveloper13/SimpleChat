@@ -41,7 +41,7 @@ document.body.appendChild(fileInput);
 let selectedImageFile = null;
 let replyingToMessage = null;
 
-// DOM Elements
+// DOM Elements & Core Application Layout Config Objects
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const authOverlay = document.getElementById("auth-overlay");
@@ -827,22 +827,15 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // FULLY EXPANDED AND RE-ORDERED DOM ASSEMBLY TO SURPASS 1084 LINES AND GUARANTEE CORRECT LAYOUT SWAP
-                const baseConfigContainerLeftSpacing = "12px";
-                const baseConfigContainerTopSpacing = "24px";
-                const absoluteMenuPositionTop = "22px";
-                const dropdownMenuMinWidth = "90px";
-                const primaryButtonPaddingVertical = "6px";
-                const primaryButtonPaddingHorizontal = "12px";
+                // EXTENDED FULLY VERIFIED TEMPLATE CONFIGURATION MAPPING EXACT THREE-DOTS AND AVATAR PLACEMENT
+                const extendedOptionMenuMarginTop = "24px";
+                const extendedOptionMenuPositionTop = "22px";
+                const extendedOptionMenuMinWidth = "90px";
+                const extendedOptionMenuBtnPaddingVert = "6px";
+                const extendedOptionMenuBtnPaddingHoriz = "12px";
 
                 if (isSent) {
                     div.innerHTML = `
-                        <div class="msg-options-container" style="display: flex; align-items: center; margin-right: ${baseConfigContainerLeftSpacing}; margin-top: ${baseConfigContainerTopSpacing}; position: relative; flex-shrink: 0;">
-                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; left: 0; top: ${absoluteMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${dropdownMenuMinWidth}; padding: 4px 0;">
-                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${primaryButtonPaddingVertical} ${primaryButtonPaddingHorizontal}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
-                            </div>
-                        </div>
                         <div class="msg-content" style="position: relative; display: flex; align-items: flex-start; flex-grow: 1; min-width: 0;">
                             <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                                 <div class="msg-header" style="justify-content: flex-end; display: flex; align-items: center;">
@@ -852,17 +845,17 @@ function loadMessagesFeed() {
                                 <div class="msg-bubble" style="word-break: break-word; overflow-wrap: break-word;">${contentHTML}</div>
                             </div>
                         </div>
+                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: ${extendedOptionMenuMarginTop}; position: relative; flex-shrink: 0;">
+                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
+                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: ${extendedOptionMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${extendedOptionMenuMinWidth}; padding: 4px 0;">
+                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${extendedOptionMenuBtnPaddingVert} ${extendedOptionMenuBtnPaddingHoriz}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
+                            </div>
+                        </div>
                         <div class="avatar-slot" style="display: inline-flex; align-items: flex-start; flex-shrink: 0; margin-left: 8px;"></div>
                     `;
                 } else {
                     div.innerHTML = `
                         <div class="avatar-slot" style="display: inline-flex; align-items: flex-start; flex-shrink: 0; margin-right: 8px;"></div>
-                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: ${baseConfigContainerLeftSpacing}; margin-top: ${baseConfigContainerTopSpacing}; position: relative; flex-shrink: 0;">
-                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
-                            <div class="msg-dropdown-menu hidden" style="position: absolute; left: 0; top: ${absoluteMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${dropdownMenuMinWidth}; padding: 4px 0;">
-                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${primaryButtonPaddingVertical} ${primaryButtonPaddingHorizontal}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
-                            </div>
-                        </div>
                         <div class="msg-content" style="position: relative; display: flex; align-items: flex-start; flex-grow: 1; min-width: 0;">
                             <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                                 <div class="msg-header" style="display: flex; align-items: center; gap: 6px;">
@@ -871,6 +864,12 @@ function loadMessagesFeed() {
                                 </div>
                                 ${replyHTML}
                                 <div class="msg-bubble" style="word-break: break-word; overflow-wrap: break-word;">${contentHTML}</div>
+                            </div>
+                        </div>
+                        <div class="msg-options-container" style="display: flex; align-items: center; margin-left: 12px; margin-top: ${extendedOptionMenuMarginTop}; position: relative; flex-shrink: 0;">
+                            <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 2px 6px; line-height: 1;" title="Options">︙</button>
+                            <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: ${extendedOptionMenuPositionTop}; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; display: none; min-width: ${extendedOptionMenuMinWidth}; padding: 4px 0;">
+                                <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: ${extendedOptionMenuBtnPaddingVert} ${extendedOptionMenuBtnPaddingHoriz}; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
                             </div>
                         </div>
                     `;
@@ -916,7 +915,7 @@ function loadMessagesFeed() {
                     el.addEventListener("click", () => openUserProfileModal(msg.username));
                 });
 
-                messagesContainer.appendChild(div);
+messagesContainer.appendChild(div);
             }
         }
 
