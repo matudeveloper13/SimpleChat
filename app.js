@@ -632,7 +632,7 @@ messageInput?.addEventListener("input", async () => {
             try {
                 await deleteDoc(typingDocRef);
             } catch(e){}
-        }, 3000);
+        }, 2000);
     } catch(e){}
 });
 
@@ -724,7 +724,6 @@ function loadMessagesFeed() {
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
 
-    // Use orderBy("timestamp", "desc") with limit(50), then reverse them so newest messages appear at the bottom instantly without scrolling through old ones first!
     const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(50));
     
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
@@ -804,27 +803,37 @@ function loadMessagesFeed() {
         }
     });
 
-    // Clean check for typing indicators to prevent phantom typing
+    // Bulletproof typing listener with automatic zombie/stuck document cleanup
     const typingQuery = query(collection(db, "typing"));
-    unsubscribeTyping = onSnapshot(typingQuery, (snap) => {
+    unsubscribeTyping = onSnapshot(typingQuery, async (snap) => {
         let activeTypingUsers = [];
         const currentRoomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
         const nowTime = new Date();
 
-        snap.forEach(d => {
+        for (const d of snap.docs) {
             const data = d.data();
             const matchesRoom = (data.room === currentRoomKey) || 
                                 (currentChatRoom !== "global" && (data.room === `${currentChatRoom}_${currentUsername}` || data.room === `${currentUsername}_${currentChatRoom}`));
 
-            if (matchesRoom && data.username && data.username !== currentUsername) {
+            if (matchesRoom && data.username) {
                 if (data.lastTyped) {
                     const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
-                    if (!isNaN(typedDate.getTime()) && (nowTime - typedDate < 4000)) {
+                    const diffMs = nowTime - typedDate;
+
+                    // If a typing status is older than 3 seconds, automatically delete it from database as a cleanup failsafe
+                    if (isNaN(typedDate.getTime()) || diffMs > 3000) {
+                        try {
+                            await deleteDoc(d.ref);
+                        } catch(e) {}
+                        continue;
+                    }
+
+                    if (data.username !== currentUsername && diffMs <= 2500) {
                         activeTypingUsers.push(data.username);
                     }
                 }
             }
-        });
+        }
 
         if (activeTypingUsers.length > 0) {
             let typingMessageText = "";
