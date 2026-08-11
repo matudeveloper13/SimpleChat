@@ -141,7 +141,7 @@ if (viewUserAvatar && viewUserAvatar.parentNode) {
     profilePfpWrapper = document.createElement("div");
     profilePfpWrapper.style.cssText = "position: relative; display: inline-block; margin: 0 auto 15px auto;";
     viewUserAvatar.parentNode.insertBefore(profilePfpWrapper, viewUserAvatar);
-    profilePfpWrapper.appendChild(profileUserAvatar);
+    profilePfpWrapper.appendChild(viewUserAvatar);
     
     profileStatusDot = document.createElement("span");
     profileStatusDot.id = "profile-modal-status-dot";
@@ -163,7 +163,6 @@ let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
 
-// In-memory cache for message reactions to ensure immediate optimistic UI rendering
 const localReactionsCache = new Map();
 
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
@@ -600,7 +599,8 @@ messageInput?.addEventListener("input", () => {
 
 if (discordEmojiGrid) {
     discordEmojiGrid.innerHTML = "";
-    const basicEmojis = ["😀", "😂", "😍", "👍", "🔥", "❤️", "😎", "🎉"];
+    // Only the requested 6 emojis in the emoji picker
+    const basicEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
     basicEmojis.forEach(em => {
         const emojiDiv = document.createElement("div");
         emojiDiv.className = "discord-picker-emoji-thumb";
@@ -889,7 +889,6 @@ function loadMessagesFeed() {
 
             if (!matchesRoom) continue;
 
-            // Merge local optimistic reactions cache if present
             if (localReactionsCache.has(msgId)) {
                 msg.reactions = localReactionsCache.get(msgId);
             }
@@ -936,7 +935,6 @@ function loadMessagesFeed() {
                     deleteBtnHTML = `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>`;
                 }
 
-                // Render reactions container
                 const reactionsData = msg.reactions || {};
                 let reactionsHTML = renderReactionsHTML(reactionsData);
 
@@ -962,7 +960,6 @@ function loadMessagesFeed() {
                 `;
                 div.prepend(avatarImgElement);
 
-                // Setup reaction buttons event handlers
                 attachReactionHandlers(div, msgId, msg);
 
                 if (isSent) {
@@ -993,13 +990,11 @@ function loadMessagesFeed() {
 
                 messagesContainer.appendChild(div);
             } else {
-                // If message is already rendered, update its reactions container dynamically for real-time sync without full re-render
                 const existingMsgEl = document.getElementById(`msg-${msgId}`);
                 if (existingMsgEl) {
                     let reactionsContainerEl = existingMsgEl.querySelector(".message-reactions-container");
                     if (reactionsContainerEl) {
                         reactionsContainerEl.outerHTML = renderReactionsHTML(msg.reactions || {});
-                        const updatedContainer = existingMsgEl.querySelector(".message-reactions-container");
                         attachReactionHandlers(existingMsgEl, msgId, msg);
                     }
                 }
@@ -1035,7 +1030,6 @@ function renderReactionsHTML(reactionsData) {
 
 function attachReactionHandlers(messageElement, msgId, msg) {
     messageElement.querySelectorAll(".reaction-pill, .add-reaction-trigger-btn").forEach(btn => {
-        // Remove existing listener clones by replacing or handling safely
         btn.replaceWith(btn.cloneNode(true));
     });
 
@@ -1109,11 +1103,9 @@ async function toggleMessageReaction(msgId, emoji, currentReactions, messageElem
         updatedReactions[emoji].push(currentUsername);
     }
 
-    // Save to local cache for instant feedback
     localReactionsCache.set(msgId, updatedReactions);
     msg.reactions = updatedReactions;
 
-    // Instantly update UI without page reload
     const reactionsContainerEl = messageElement.querySelector(".message-reactions-container");
     if (reactionsContainerEl) {
         reactionsContainerEl.outerHTML = renderReactionsHTML(updatedReactions);
