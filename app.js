@@ -199,7 +199,7 @@ exitDmBtn?.addEventListener("click", () => {
     chatRoomTitle.textContent = "global chat";
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.display = "none";
-    if (photoBtn) photoBtn.classList.add("hidden");
+    if (photoBtn) photoBtn.classList.remove("hidden");
     loadMessagesFeed();
 });
 
@@ -496,7 +496,7 @@ saveBioBtn?.addEventListener("click", async () => {
 });
 
 photoBtn?.addEventListener("click", () => {
-    if (currentUsername === "Guest" || currentChatRoom === "global") return;
+    if (currentUsername === "Guest") return;
     fileInput.click();
 });
 
@@ -776,7 +776,7 @@ function loadMessagesFeed() {
 
             let matchesRoom = false;
             if (currentChatRoom === "global") {
-                matchesRoom = !msg.room || msg.room === "global";
+                matchesRoom = !msg.room || msg.room === "global" || msg.room === "";
             } else {
                 const expectedDM = [currentUsername, currentChatRoom].sort().join("_dm_");
                 matchesRoom = msg.room === expectedDM || 
@@ -830,29 +830,17 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                if (isSent) {
-                    div.innerHTML = `
-                        <div class="msg-content">
-                            <div class="msg-header">
-                                <span class="msg-time">${readableTime}</span>
-                            </div>
-                            ${replyHTML}
-                            <div class="msg-bubble">${contentHTML}</div>
+                div.innerHTML = `
+                    <div class="msg-content">
+                        <div class="msg-header">
+                            ${!isSent ? `<span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>` : ""}
+                            <span class="msg-time">${readableTime}</span>
                         </div>
-                    `;
-                } else {
-                    div.innerHTML = `
-                        <div class="msg-content">
-                            <div class="msg-header">
-                                <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
-                                <span class="msg-time">${readableTime}</span>
-                            </div>
-                            ${replyHTML}
-                            <div class="msg-bubble">${contentHTML}</div>
-                        </div>
-                    `;
-                    div.prepend(avatarImgElement);
-                }
+                        ${replyHTML}
+                        <div class="msg-bubble">${contentHTML}</div>
+                    </div>
+                `;
+                div.prepend(avatarImgElement);
 
                 div.addEventListener("dblclick", () => {
                     if (currentUsername === "Guest") return;
@@ -1014,7 +1002,7 @@ function openDirectMessage(friendName) {
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
     exitDmBtn.style.display = "inline-block";
-    if (photoBtn) photoBtn.classList.add("hidden");
+    if (photoBtn) photoBtn.classList.remove("hidden");
     friendsSection.classList.add("hidden");
     globalChatSection.classList.remove("hidden");
     loadMessagesFeed();
