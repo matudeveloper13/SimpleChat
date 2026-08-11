@@ -195,8 +195,11 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
     }
 });
 
-// --- MUSIC PLAYER PANEL FEATURE (UPPER CORNER) ---
+// --- MUSIC PLAYER PANEL FEATURE (UPPER CORNER, SINGLE UNIQUE BUTTON) ---
 let currentAudio = null;
+
+// Clean up any existing duplicate music buttons if present in DOM
+document.querySelectorAll("#music-panel-btn").forEach(el => el.remove());
 
 const musicBtn = document.createElement("button");
 musicBtn.id = "music-panel-btn";
