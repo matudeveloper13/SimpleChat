@@ -163,8 +163,6 @@ let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
 
-const localReactionsCache = new Map();
-
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
@@ -661,8 +659,7 @@ if (discordEmojiGrid) {
                 username: currentUsername,
                 room: roomKey,
                 recipient: recipient,
-                timestamp: serverTimestamp(),
-                reactions: {}
+                timestamp: serverTimestamp()
             };
 
             if (replyingToMessage) {
@@ -728,8 +725,7 @@ messageForm?.addEventListener("submit", async (e) => {
                     username: currentUsername,
                     room: roomKey,
                     recipient: recipient,
-                    timestamp: serverTimestamp(),
-                    reactions: {}
+                    timestamp: serverTimestamp()
                 };
 
                 if (replyingToMessage) {
@@ -763,8 +759,7 @@ messageForm?.addEventListener("submit", async (e) => {
         username: currentUsername,
         room: roomKey,
         recipient: recipient,
-        timestamp: serverTimestamp(),
-        reactions: {}
+        timestamp: serverTimestamp()
     };
 
     if (replyingToMessage) {
@@ -864,7 +859,6 @@ function loadMessagesFeed() {
         renderedMessageIds.forEach(id => {
             if (!existingDocIds.has(id)) {
                 renderedMessageIds.delete(id);
-                localReactionsCache.delete(id);
                 const el = document.getElementById(`msg-${id}`);
                 if (el) el.remove();
             }
@@ -888,9 +882,6 @@ function loadMessagesFeed() {
             }
 
             if (!matchesRoom) continue;
-
-            const reactionsData = msg.reactions || {};
-            localReactionsCache.set(msgId, reactionsData);
 
             let existingMsgEl = document.getElementById(`msg-${msgId}`);
 
@@ -950,12 +941,9 @@ function loadMessagesFeed() {
                         </div>
                         ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
-                        ${renderReactionsHTML(reactionsData)}
                     </div>
                 `;
                 div.prepend(avatarImgElement);
-
-                attachReactionHandlers(div, msgId, msg);
 
                 if (isSent) {
                     const delBtn = div.querySelector(".delete-msg-btn");
@@ -984,12 +972,6 @@ function loadMessagesFeed() {
                 });
 
                 messagesContainer.appendChild(div);
-            } else {
-                const reactionsContainerEl = existingMsgEl.querySelector(".message-reactions-container");
-                if (reactionsContainerEl) {
-                    reactionsContainerEl.outerHTML = renderReactionsHTML(reactionsData);
-                    attachReactionHandlers(existingMsgEl, msgId, msg);
-                }
             }
         }
 
@@ -1000,115 +982,6 @@ function loadMessagesFeed() {
             scrollToBottom(true);
         }
     });
-}
-
-function renderReactionsHTML(reactionsData) {
-    let html = `<div class="message-reactions-container" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; position: relative;">`;
-    for (const [emoji, usersList] of Object.entries(reactionsData)) {
-        if (!Array.isArray(usersList) || usersList.length === 0) continue;
-        const hasReacted = usersList.includes(currentUsername);
-        html += `
-            <button type="button" class="reaction-pill ${hasReacted ? 'user-reacted' : ''}" data-emoji="${emoji}" style="background: ${hasReacted ? 'var(--primary-color)' : 'var(--card-bg)'}; color: ${hasReacted ? '#fff' : 'var(--text-color)'}; border: 1px solid var(--border-color); border-radius: 12px; padding: 2px 8px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                <span>${emoji}</span>
-                <span>${usersList.length}</span>
-            </button>
-        `;
-    }
-    html += `
-        <button type="button" class="add-reaction-trigger-btn" title="Add reaction" style="background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; padding: 2px 6px; font-size: 11px; cursor: pointer; color: var(--text-muted);">&#43;</button>
-    </div>`;
-    return html;
-}
-
-function attachReactionHandlers(messageElement, msgId, msgObj) {
-    const reactionContainer = messageElement.querySelector(".message-reactions-container");
-    if (!reactionContainer) return;
-
-    reactionContainer.onclick = async (e) => {
-        const pillBtn = e.target.closest(".reaction-pill");
-        const addBtn = e.target.closest(".add-reaction-trigger-btn");
-
-        if (currentUsername === "Guest") {
-            authOverlay.classList.remove("hidden");
-            return;
-        }
-
-        if (addBtn) {
-            e.stopPropagation();
-            existingPickers.forEach(p => p.remove());
-            existingPickers = [];
-
-            const picker = document.createElement("div");
-            picker.className = "quick-reaction-picker";
-            picker.style.cssText = "position: absolute; bottom: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 8px; display: flex; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; margin-bottom: 6px;";
-            
-            const quickEmojis = ["😂", "😭", "👀", "💀", "👍", "👎"];
-            quickEmojis.forEach(em => {
-                const emBtn = document.createElement("button");
-                emBtn.type = "button";
-                emBtn.textContent = em;
-                emBtn.style.cssText = "background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px; transition: transform 0.1s;";
-                emBtn.addEventListener("mouseenter", () => emBtn.style.transform = "scale(1.2)");
-                emBtn.addEventListener("mouseleave", () => emBtn.style.transform = "scale(1)");
-                emBtn.addEventListener("click", async (ev) => {
-                    ev.stopPropagation();
-                    picker.remove();
-                    await toggleMessageReaction(msgId, em, messageElement);
-                });
-                picker.appendChild(emBtn);
-            });
-
-            addBtn.style.position = "relative";
-            addBtn.appendChild(picker);
-            existingPickers.push(picker);
-        } else if (pillBtn) {
-            e.stopPropagation();
-            const emojiToToggle = pillBtn.getAttribute("data-emoji");
-            if (emojiToToggle) {
-                await toggleMessageReaction(msgId, emojiToToggle, messageElement);
-            }
-        }
-    };
-}
-
-async function toggleMessageReaction(msgId, emoji, messageElement) {
-    if (currentUsername === "Guest") return;
-
-    const msgDocRef = doc(db, "messages", msgId);
-    const snap = await getDoc(msgDocRef);
-    if (!snap.exists()) return;
-
-    const msgData = snap.data();
-    const currentReactions = msgData.reactions || {};
-    const updatedReactions = JSON.parse(JSON.stringify(currentReactions));
-    
-    if (!updatedReactions[emoji]) {
-        updatedReactions[emoji] = [];
-    }
-
-    const userIndex = updatedReactions[emoji].indexOf(currentUsername);
-    if (userIndex > -1) {
-        updatedReactions[emoji].splice(userIndex, 1);
-        if (updatedReactions[emoji].length === 0) {
-            delete updatedReactions[emoji];
-        }
-    } else {
-        updatedReactions[emoji].push(currentUsername);
-    }
-
-    const reactionsContainerEl = messageElement.querySelector(".message-reactions-container");
-    if (reactionsContainerEl) {
-        reactionsContainerEl.outerHTML = renderReactionsHTML(updatedReactions);
-        attachReactionHandlers(messageElement, msgId, msgData);
-    }
-
-    try {
-        await updateDoc(msgDocRef, {
-            reactions: updatedReactions
-        });
-    } catch (err) {
-        console.error("Failed to update reaction:", err);
-    }
 }
 
 async function openUserProfileModal(username) {
