@@ -136,7 +136,7 @@ banModalOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; 
 banModalOverlay.innerHTML = `
     <div class="modal" style="background: var(--card-bg); padding: 25px; border-radius: 12px; text-align: center; max-width: 380px; width: 90%; border: 1px solid var(--border-color);">
         <h3 style="margin-bottom: 15px; color: #ef4444;">Admin Ban Panel</h3>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Enter exact username to ban user, delete their messages, and set banned status.</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Enter exact username to ban user, delete their messages, delete their user doc, and set banned status.</p>
         <input type="text" id="ban-username-input" placeholder="Username to ban..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); margin-bottom: 15px; box-sizing: border-box;" />
         <div style="display: flex; gap: 10px;">
             <button id="cancel-ban-btn" class="btn btn-secondary" style="flex: 1; height: 40px;">Cancel</button>
@@ -188,7 +188,7 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
         return;
     }
 
-    if (!confirm(`Are you sure you want to BAN @${targetUserToBan}, delete all their messages, and lock their account?`)) {
+    if (!confirm(`Are you sure you want to BAN @${targetUserToBan}, delete their account data completely, and lock them out?`)) {
         return;
     }
 
@@ -199,24 +199,15 @@ document.getElementById("confirm-ban-btn")?.addEventListener("click", async () =
         const deletePromises = msgSnapshots.docs.map(d => deleteDoc(doc(db, "messages", d.id)));
         await Promise.all(deletePromises);
 
-        statusMsg.textContent = "Updating user status to banned...";
+        statusMsg.textContent = "Deleting account document and setting ban record...";
         const userDocRef = doc(db, "users", targetUserToBan);
-        const userSnap = await getDoc(userDocRef);
-        
-        if (userSnap.exists()) {
-            await updateDoc(userDocRef, { isBanned: true });
-        } else {
-            await setDoc(userDocRef, {
-                username: targetUserToBan,
-                bio: "",
-                avatar: "avatar1.png",
-                friends: [],
-                friendRequests: [],
-                blocked: [],
-                isBanned: true,
-                lastSeen: serverTimestamp()
-            });
-        }
+        await deleteDoc(userDocRef);
+
+        const banRecordRef = doc(db, "banned_users", targetUserToBan);
+        await setDoc(banRecordRef, {
+            username: targetUserToBan,
+            bannedAt: serverTimestamp()
+        });
 
         statusMsg.style.color = "var(--success, #22c55e)";
         statusMsg.textContent = `Successfully banned @${targetUserToBan}!`;
@@ -419,6 +410,13 @@ registerForm?.addEventListener("submit", async (e) => {
     const password = document.getElementById("register-password").value;
 
     try {
+        const banCheckSnap = await getDoc(doc(db, "banned_users", username));
+        if (banCheckSnap.exists()) {
+            authOverlay.classList.add("hidden");
+            banNoticeOverlay.classList.remove("hidden");
+            return;
+        }
+
         await createUserWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
         await setDoc(doc(db, "users", username), {
             username,
@@ -427,7 +425,6 @@ registerForm?.addEventListener("submit", async (e) => {
             friends: [],
             friendRequests: [],
             blocked: [],
-            isBanned: false,
             lastSeen: serverTimestamp()
         });
         authOverlay.classList.add("hidden");
@@ -441,14 +438,22 @@ loginForm?.addEventListener("submit", async (e) => {
     const username = document.getElementById("login-username").value.trim();
     const password = document.getElementById("login-password").value;
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+        const banCheckSnap = await getDoc(doc(db, "banned_users", username));
+        if (banCheckSnap.exists()) {
+            authOverlay.classList.add("hidden");
+            banNoticeOverlay.classList.remove("hidden");
+            return;
+        }
+
+        await signInWithEmailAndPassword(auth, makeEmail(username), makeSecurePass(password));
+        
         const userDocRef = doc(db, "users", username);
         const userSnap = await getDoc(userDocRef);
         
-        if (userSnap.exists() && userSnap.data().isBanned === true) {
-            signOut(auth);
+        if (!userSnap.exists()) {
             authOverlay.classList.add("hidden");
             banNoticeOverlay.classList.remove("hidden");
+            signOut(auth);
             return;
         }
 
@@ -461,6 +466,16 @@ loginForm?.addEventListener("submit", async (e) => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUsername = user.email.split("@")[0];
+        
+        const banCheckSnap = await getDoc(doc(db, "banned_users", currentUsername));
+        if (banCheckSnap.exists()) {
+            isCurrentUserBanned = true;
+            banNoticeOverlay.classList.remove("hidden");
+            if (presenceInterval) clearInterval(presenceInterval);
+            signOut(auth);
+            return;
+        }
+
         myMiniUsername.innerHTML = renderUsernameWithCrown(currentUsername);
         authModalBtn.classList.add("hidden");
         logoutBtn.classList.remove("hidden");
@@ -468,7 +483,7 @@ onAuthStateChanged(auth, async (user) => {
         const userRef = doc(db, "users", currentUsername);
         const snap = await getDoc(userRef);
 
-        if (snap.exists() && snap.data().isBanned === true) {
+        if (!snap.exists()) {
             isCurrentUserBanned = true;
             banNoticeOverlay.classList.remove("hidden");
             if (presenceInterval) clearInterval(presenceInterval);
@@ -484,28 +499,15 @@ onAuthStateChanged(auth, async (user) => {
             banPanelTrigger?.classList.add("hidden");
         }
 
-        if (!snap.exists()) {
-            await setDoc(userRef, {
-                username: currentUsername,
-                bio: "Hey there! I am using SimpleChat.",
-                avatar: "avatar1.png",
-                friends: [],
-                friendRequests: [],
-                blocked: [],
-                isBanned: false,
-                lastSeen: serverTimestamp()
-            });
-            myBlockedUsersCache = [];
-        } else {
-            const data = snap.data();
-            myBlockedUsersCache = data.blocked || [];
-            if (data.avatar) {
-                myMiniAvatar.src = data.avatar;
-                editModalAvatar.src = data.avatar;
-                userAvatarsCache[currentUsername] = data.avatar;
-            }
-            if (data.bio) bioInput.value = data.bio;
+        const data = snap.data();
+        myBlockedUsersCache = data.blocked || [];
+        if (data.avatar) {
+            myMiniAvatar.src = data.avatar;
+            editModalAvatar.src = data.avatar;
+            userAvatarsCache[currentUsername] = data.avatar;
         }
+        if (data.bio) bioInput.value = data.bio;
+        
         startPresenceHeartbeat();
     } else {
         if (presenceInterval) clearInterval(presenceInterval);
@@ -654,7 +656,7 @@ cropViewport?.addEventListener("touchstart", (e) => {
 
 window.addEventListener("touchmove", (e) => {
     if (!isDragging || e.touches.length !== 1) return;
-    imgX = e.touches[0].clientX - startX;
+    imgX = e.touches[0].clientX - imgX;
     imgY = e.touches[0].clientY - startY;
     updateCropImageTransform();
 }, { passive: true });
@@ -736,7 +738,7 @@ bioInput?.addEventListener("input", () => {
 });
 
 saveBioBtn?.addEventListener("click", async () => {
-    if (currentUsername === "Guest") return;
+    if (currentUsername === "Guest" || isCurrentUserBanned) return;
     await updateDoc(doc(db, "users", currentUsername), { bio: bioInput.value.trim() });
     profileOverlay.classList.add("hidden");
 });
@@ -1236,7 +1238,7 @@ async function openUserProfileModal(username) {
 closeViewProfile?.addEventListener("click", () => viewProfileOverlay.classList.add("hidden"));
 
 profileBlockActionBtn?.addEventListener("click", async () => {
-    if (currentUsername === "Guest" || !viewingProfileUsername) return;
+    if (currentUsername === "Guest" || isCurrentUserBanned || !viewingProfileUsername) return;
     const myRef = doc(db, "users", currentUsername);
     const isCurrentlyBlocked = myBlockedUsersCache.includes(viewingProfileUsername);
 
@@ -1259,9 +1261,12 @@ profileBlockActionBtn?.addEventListener("click", async () => {
 });
 
 profileFriendActionBtn?.addEventListener("click", async () => {
-    if (currentUsername === "Guest" || !viewingProfileUsername) return;
+    if (currentUsername === "Guest" || isCurrentUserBanned || !viewingProfileUsername) return;
     if (profileFriendActionBtn.textContent.includes("Open DM")) return;
     
+    const targetSnap = await getDoc(doc(db, "users", viewingProfileUsername));
+    if (!targetSnap.exists()) return;
+
     await updateDoc(doc(db, "users", viewingProfileUsername), {
         friendRequests: arrayUnion(currentUsername)
     });
@@ -1271,9 +1276,15 @@ profileFriendActionBtn?.addEventListener("click", async () => {
 
 sendFriendRequestBtn?.addEventListener("click", async () => {
     const targetName = addFriendInput.value.trim();
-    if (!targetName || currentUsername === "Guest") return;
+    if (!targetName || currentUsername === "Guest" || isCurrentUserBanned) return;
 
     try {
+        const banCheck = await getDoc(doc(db, "banned_users", targetName));
+        if (banCheck.exists()) {
+            friendActionMsg.textContent = "User not found.";
+            return;
+        }
+
         const targetSnap = await getDoc(doc(db, "users", targetName));
         if (!targetSnap.exists()) {
             friendActionMsg.textContent = "User not found.";
@@ -1291,7 +1302,7 @@ sendFriendRequestBtn?.addEventListener("click", async () => {
 });
 
 async function loadFriendsAndRequests() {
-    if (currentUsername === "Guest") return;
+    if (currentUsername === "Guest" || isCurrentUserBanned) return;
     pendingRequestsContainer.innerHTML = "";
     friendsListContainer.innerHTML = "";
     if (blockedUsersContainer) blockedUsersContainer.innerHTML = "";
@@ -1308,12 +1319,11 @@ async function loadFriendsAndRequests() {
     if (currentUsername === "matubanana" || currentUsername === "matubanana2") {
         adminBannedUsersSection?.classList.remove("hidden");
         try {
-            const usersQuery = query(collection(db, "users"), where("isBanned", "==", true));
-            const userSnaps = await getDocs(usersQuery);
-            if (userSnaps.empty) {
+            const bannedQuerySnap = await getDocs(collection(db, "banned_users"));
+            if (bannedQuerySnap.empty) {
                 adminBannedUsersContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">No banned users.</p>`;
             } else {
-                userSnaps.forEach(uDoc => {
+                bannedQuerySnap.forEach(uDoc => {
                     const bUserData = uDoc.data();
                     const bName = bUserData.username;
                     const row = document.createElement("div");
@@ -1324,7 +1334,16 @@ async function loadFriendsAndRequests() {
                     `;
                     row.querySelector("button").addEventListener("click", async () => {
                         if (confirm(`Unban @${bName}?`)) {
-                            await updateDoc(doc(db, "users", bName), { isBanned: false });
+                            await deleteDoc(doc(db, "banned_users", bName));
+                            await setDoc(doc(db, "users", bName), {
+                                username: bName,
+                                bio: "Hey there! I am using SimpleChat.",
+                                avatar: "avatar1.png",
+                                friends: [],
+                                friendRequests: [],
+                                blocked: [],
+                                lastSeen: serverTimestamp()
+                            });
                             loadFriendsAndRequests();
                         }
                     });
@@ -1414,6 +1433,7 @@ async function loadFriendsAndRequests() {
 }
 
 function openDirectMessage(friendName) {
+    if (isCurrentUserBanned) return;
     currentChatRoom = friendName;
     chatRoomTitle.textContent = `DM with @${friendName}`;
     exitDmBtn.classList.remove("hidden");
@@ -1428,8 +1448,12 @@ function openDirectMessage(friendName) {
 }
 
 async function acceptFriendRequest(friendName) {
+    if (isCurrentUserBanned) return;
     const myRef = doc(db, "users", currentUsername);
     const friendRef = doc(db, "users", friendName);
+
+    const friendSnap = await getDoc(friendRef);
+    if (!friendSnap.exists()) return;
 
     await updateDoc(myRef, {
         friends: arrayUnion(friendName),
