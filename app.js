@@ -498,6 +498,10 @@ saveBioBtn?.addEventListener("click", async () => {
 
 photoBtn?.addEventListener("click", () => {
     if (currentUsername === "Guest") return;
+    if (currentChatRoom === "global") {
+        alert("Images can only be sent in DMs, not in the global chat!");
+        return;
+    }
     fileInput.click();
 });
 
@@ -619,6 +623,14 @@ document.addEventListener("click", (e) => {
 messageForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (currentUsername === "Guest") return;
+
+    if (currentChatRoom === "global" && selectedImageFile) {
+        alert("Images cannot be sent in the global chat!");
+        selectedImageFile = null;
+        fileInput.value = "";
+        messageInput.value = "";
+        return;
+    }
 
     const roomKey = currentChatRoom === "global" ? "global" : [currentUsername, currentChatRoom].sort().join("_dm_");
     const recipient = currentChatRoom === "global" ? null : currentChatRoom;
