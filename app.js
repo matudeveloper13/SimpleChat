@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, limit, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -32,7 +32,6 @@ function renderUsernameWithCrown(username) {
     return sanitizeMessageHTML(cleanName);
 }
 
-// Hidden file input restricted ONLY to PNG, JPG, JPEG for chat photos
 const fileInput = document.createElement("input");
 fileInput.type = "file";
 fileInput.accept = "image/png, image/jpeg, image/jpg";
@@ -99,7 +98,6 @@ const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 const typingIndicatorBox = document.getElementById("typing-indicator-box");
 const typingTextLabel = document.getElementById("typing-text-label");
 
-// Inject typing indicator animated dots styling dynamically with global visibility guarantees
 const typingStyleTag = document.createElement("style");
 typingStyleTag.innerHTML = `
     #typing-indicator-box {
@@ -181,7 +179,6 @@ function scrollToBottom(smooth = true) {
     }
 }
 
-// Navigation
 themeToggleBtn?.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
     themeToggleBtn.textContent = document.body.classList.contains("dark-mode") ? "🌙" : "☀️";
@@ -224,7 +221,6 @@ authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidd
 closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
 logoutBtn?.addEventListener("click", () => signOut(auth));
 
-// Auth
 registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("register-username").value.trim();
@@ -291,7 +287,6 @@ onAuthStateChanged(auth, async (user) => {
     loadMessagesFeed();
 });
 
-// Profile Modal
 topLeftProfile?.addEventListener("click", () => {
     if (currentUsername === "Guest") {
         authOverlay.classList.remove("hidden");
@@ -672,6 +667,7 @@ messageForm?.addEventListener("submit", async (e) => {
                     recipient: recipient,
                     timestamp: serverTimestamp()
                 });
+                scrollToBottom(true);
             } else {
                 alert("Upload failed: " + data.error.message);
                 messageInput.value = "";
@@ -699,6 +695,7 @@ messageForm?.addEventListener("submit", async (e) => {
         recipient: recipient,
         timestamp: serverTimestamp()
     });
+    scrollToBottom(true);
 });
 
 async function getLiveUserAvatar(username) {
@@ -727,14 +724,16 @@ function loadMessagesFeed() {
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
 
-    // Use limit(50) or similar to fetch only recent messages so it loads instantly at the newest message instead of full history
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(100));
+    // Use orderBy("timestamp", "desc") with limit(50), then reverse them so newest messages appear at the bottom instantly without scrolling through old ones first!
+    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(50));
+    
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
+        let docsArray = snapshot.docs.reverse();
         let hasNewMessages = false;
 
-        for (const docSnap of snapshot.docs) {
+        for (const docSnap of docsArray) {
             const msgId = docSnap.id;
             const msg = docSnap.data();
 
@@ -766,7 +765,6 @@ function loadMessagesFeed() {
                     const isAvatarEmoji = mediaPath.includes("avatar") && !mediaPath.startsWith("http");
 
                     if (isVideo) {
-                        // Original full size when sent in chat container
                         contentHTML = `<video src="${mediaPath}" autoplay loop muted playsinline disablepictureinpicture style="max-width:320px; width:100%; border-radius:8px; display:block; pointer-events:none; user-select:none;"></video>`;
                     } else if (isAvatarEmoji) {
                         contentHTML = `<img src="${mediaPath}" class="inline-avatar-emoji" alt="emoji" />`;
@@ -801,12 +799,12 @@ function loadMessagesFeed() {
         if (isInitialLoad) {
             scrollToBottom(false);
             isInitialLoad = false;
-        } else if (hasNewMessages && (isNearBottom || messagesContainer.scrollTop === 0)) {
-            // Only auto-scroll smoothly if user sent it or was already at bottom. Prevent view jumping to top if user is looking at older history.
+        } else if (hasNewMessages && isNearBottom) {
             scrollToBottom(true);
         }
     });
 
+    // Clean check for typing indicators to prevent phantom typing
     const typingQuery = query(collection(db, "typing"));
     unsubscribeTyping = onSnapshot(typingQuery, (snap) => {
         let activeTypingUsers = [];
@@ -821,7 +819,6 @@ function loadMessagesFeed() {
             if (matchesRoom && data.username && data.username !== currentUsername) {
                 if (data.lastTyped) {
                     const typedDate = typeof data.lastTyped.toDate === "function" ? data.lastTyped.toDate() : new Date(data.lastTyped);
-                    // Strictly check if timestamp is valid and within the last 4 seconds to eliminate zombie/stuck typing indicators
                     if (!isNaN(typedDate.getTime()) && (nowTime - typedDate < 4000)) {
                         activeTypingUsers.push(data.username);
                     }
