@@ -827,7 +827,7 @@ function loadMessagesFeed() {
                 const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
                 avatarImgElement.src = effectiveAvatar;
 
-                // FIXED: Sent messages have 3 dots on the left of the message bubble with gap spacing, matching the user's exact specification
+                // FIXED: Placed three dots on the left for sent messages and on the right for received messages symmetrically
                 if (isSent) {
                     div.innerHTML = `
                         <div class="msg-options-container" style="display: flex; align-items: center; margin-right: 12px; margin-top: 24px; position: relative;">
@@ -1045,8 +1045,6 @@ async function loadFriendsAndRequests() {
             const avatarUrl = await getLiveUserAvatar(friend);
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
-            
-            // FIXED: Added circular user PFP next to their name in the DM tab list view as requested
             row.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
