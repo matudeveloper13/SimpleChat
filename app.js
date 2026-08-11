@@ -59,13 +59,11 @@ const messagesContainer = document.getElementById("messages-container");
 const chatRoomTitle = document.getElementById("chat-room-title");
 const exitDmBtn = document.getElementById("exit-dm-btn");
 
-// Ensure exitDmBtn visibility style fallback config
 if (exitDmBtn) {
     exitDmBtn.classList.add("hidden");
     exitDmBtn.style.cursor = "pointer";
 }
 
-// Create Reply Preview Bar dynamically above the input form
 const replyPreviewBar = document.createElement("div");
 replyPreviewBar.id = "reply-preview-bar";
 replyPreviewBar.className = "hidden";
@@ -128,11 +126,11 @@ const photoBtn = document.getElementById("photo-btn");
 const discordEmojiPicker = document.getElementById("discord-emoji-picker");
 const discordEmojiGrid = document.getElementById("discord-emoji-grid");
 
-// State
 let currentUsername = "Guest";
 let viewingProfileUsername = null;
 let currentChatRoom = "global";
 let unsubscribeMessages = null;
+let unsubscribeUserProfiles = new Map(); // Track live profile listeners to update avatars instantly
 let userAvatarsCache = {};
 let renderedMessageIds = new Set();
 let isInitialLoad = true;
@@ -197,7 +195,6 @@ backToChatBtn?.addEventListener("click", () => {
     globalChatSection.classList.remove("hidden");
 });
 
-// Fixed back to global chat handler
 exitDmBtn?.addEventListener("click", () => {
     currentChatRoom = "global";
     chatRoomTitle.textContent = "global chat";
@@ -336,7 +333,6 @@ cropOverlay.innerHTML = `
 `;
 document.body.appendChild(cropOverlay);
 
-// Fixed duplicate button bug in PFP configuration modal (only 1 button instance now)
 const avatarModalContent = document.querySelector("#avatar-selector-overlay .modal");
 if (avatarModalContent) {
     avatarModalContent.querySelectorAll(".custom-pfp-trigger-btn").forEach(b => b.remove());
@@ -710,21 +706,55 @@ messageForm?.addEventListener("submit", async (e) => {
     scrollToBottom(true);
 });
 
-async function getLiveUserAvatar(username) {
+// Real-time avatar observer helper to sync avatar updates without refreshing page
+function watchUserAvatar(username, callback) {
+    if (!username) return;
+    if (unsubscribeUserProfiles.has(username)) return; // already listening
+
+    const userDocRef = doc(db, "users", username);
+    const unsub = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.avatar) {
+                userAvatarsCache[username] = data.avatar;
+                callback(data.avatar);
+            }
+        }
+    });
+    unsubscribeUserProfiles.set(username, unsub);
+}
+
+async function getLiveUserAvatar(username, imgElement = null) {
     if (!username) return "avatar1.png";
     if (username === currentUsername && myMiniAvatar && myMiniAvatar.src) {
         return myMiniAvatar.src;
     }
     if (userAvatarsCache[username]) {
+        if (imgElement) {
+            watchUserAvatar(username, (newAvatar) => {
+                imgElement.src = newAvatar;
+            });
+        }
         return userAvatarsCache[username];
     }
     try {
         const userDoc = await getDoc(doc(db, "users", username));
         if (userDoc.exists() && userDoc.data().avatar) {
             userAvatarsCache[username] = userDoc.data().avatar;
+            if (imgElement) {
+                watchUserAvatar(username, (newAvatar) => {
+                    imgElement.src = newAvatar;
+                });
+            }
             return userDoc.data().avatar;
         }
     } catch (err) {}
+    
+    if (imgElement) {
+        watchUserAvatar(username, (newAvatar) => {
+            imgElement.src = newAvatar;
+        });
+    }
     return "avatar1.png";
 }
 
@@ -734,6 +764,17 @@ function loadMessagesFeed() {
     renderedMessageIds.clear();
     messagesContainer.innerHTML = "";
     isInitialLoad = true;
+
+    // Update Chat Room Title header to include the chat partner's avatar in DMs
+    if (currentChatRoom !== "global") {
+        chatRoomTitle.innerHTML = `<span style="display: flex; align-items: center; gap: 8px;"><img id="dm-header-avatar" src="avatar1.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" /> DM with @${sanitizeMessageHTML(currentChatRoom)}</span>`;
+        const dmHeaderAvatarImg = document.getElementById("dm-header-avatar");
+        getLiveUserAvatar(currentChatRoom, dmHeaderAvatarImg).then(av => {
+            if (dmHeaderAvatarImg) dmHeaderAvatarImg.src = av;
+        });
+    } else {
+        chatRoomTitle.textContent = "global chat";
+    }
 
     const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(50));
     
@@ -796,10 +837,17 @@ function loadMessagesFeed() {
                     `;
                 }
 
-                const effectiveAvatar = await getLiveUserAvatar(msg.username);
+                const avatarImgElement = document.createElement("img");
+                avatarImgElement.className = "msg-avatar-img";
+                avatarImgElement.alt = "Avatar";
+                avatarImgElement.src = "avatar1.png";
 
+                const effectiveAvatar = await getLiveUserAvatar(msg.username, avatarImgElement);
+                avatarImgElement.src = effectiveAvatar;
+
+                // Layout with 3 dots (︙) positioned at the outer right edge away from the profile picture/content box
                 div.innerHTML = `
-                    <img class="msg-avatar-img" src="${effectiveAvatar}" alt="Avatar" />
+                    <div class="avatar-slot" style="display:inline-flex;"></div>
                     <div class="msg-content">
                         <div class="msg-header">
                             <span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>
@@ -809,12 +857,14 @@ function loadMessagesFeed() {
                         <div class="msg-bubble">${contentHTML}</div>
                     </div>
                     <div class="msg-options-container" style="position: absolute; top: 8px; right: 8px;">
-                        <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 0 4px; line-height: 1;" title="Options">•••</button>
-                        <div class="msg-dropdown-menu hidden" style="position: absolute; right: 0; top: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; display: none; min-width: 90px; padding: 4px 0;">
+                        <button class="msg-three-dots-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; font-weight: bold; padding: 0 4px; line-height: 1;" title="Options">︙</button>
+                        <div class="msg-dropdown-menu hidden" style="position: absolute; ${isSent ? 'right: 0; left: auto;' : 'left: 0; right: auto;'} top: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; display: none; min-width: 90px; padding: 4px 0;">
                             <button class="msg-reply-option-btn" style="width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; font-size: 12px; color: var(--text-color); cursor: pointer;">Reply</button>
                         </div>
                     </div>
                 `;
+
+                div.querySelector(".avatar-slot").appendChild(avatarImgElement);
 
                 const dotsBtn = div.querySelector(".msg-three-dots-btn");
                 const dropdownMenu = div.querySelector(".msg-dropdown-menu");
