@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, 
-    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc 
+    query, orderBy, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, Timestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -40,6 +40,7 @@ document.body.appendChild(fileInput);
 
 let selectedImageFile = null;
 let replyingToMessage = null;
+let presenceInterval = null;
 
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
@@ -137,6 +138,22 @@ let isInitialLoad = true;
 const makeEmail = (username) => `${username.toLowerCase().trim()}@simplechat.com`;
 const makeSecurePass = (pass) => `sc_${pass}_pad123`;
 
+function startPresenceHeartbeat() {
+    if (presenceInterval) clearInterval(presenceInterval);
+    if (currentUsername === "Guest") return;
+
+    const updatePresence = async () => {
+        try {
+            await updateDoc(doc(db, "users", currentUsername), {
+                lastSeen: serverTimestamp()
+            });
+        } catch (e) {}
+    };
+
+    updatePresence();
+    presenceInterval = setInterval(updatePresence, 20000); // Ping every 20 seconds
+}
+
 function formatMessageTime(timestamp) {
     let date;
     if (!timestamp) {
@@ -219,7 +236,10 @@ tabLogin?.addEventListener("click", () => {
 
 authModalBtn?.addEventListener("click", () => authOverlay.classList.remove("hidden"));
 closeModalBtn?.addEventListener("click", () => authOverlay.classList.add("hidden"));
-logoutBtn?.addEventListener("click", () => signOut(auth));
+logoutBtn?.addEventListener("click", () => {
+    if (presenceInterval) clearInterval(presenceInterval);
+    signOut(auth);
+});
 
 registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -232,7 +252,8 @@ registerForm?.addEventListener("submit", async (e) => {
             bio: "Hey there! I am using SimpleChat.",
             avatar: "avatar1.png",
             friends: [],
-            friendRequests: []
+            friendRequests: [],
+            lastSeen: serverTimestamp()
         });
         authOverlay.classList.add("hidden");
     } catch (err) {
@@ -267,7 +288,8 @@ onAuthStateChanged(auth, async (user) => {
                 bio: "Hey there! I am using SimpleChat.",
                 avatar: "avatar1.png",
                 friends: [],
-                friendRequests: []
+                friendRequests: [],
+                lastSeen: serverTimestamp()
             });
         } else {
             const data = snap.data();
@@ -278,7 +300,9 @@ onAuthStateChanged(auth, async (user) => {
             }
             if (data.bio) bioInput.value = data.bio;
         }
+        startPresenceHeartbeat();
     } else {
+        if (presenceInterval) clearInterval(presenceInterval);
         currentUsername = "Guest";
         myMiniUsername.textContent = "Guest";
         authModalBtn.classList.remove("hidden");
@@ -780,6 +804,16 @@ function loadMessagesFeed() {
     unsubscribeMessages = onSnapshot(q, async (snapshot) => {
         const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 300;
         
+        // Track existing message DOM elements to handle deletions cleanly
+        const existingDocIds = new Set(snapshot.docs.map(d => d.id));
+        renderedMessageIds.forEach(id => {
+            if (!existingDocIds.has(id)) {
+                renderedMessageIds.delete(id);
+                const el = document.getElementById(`msg-${id}`);
+                if (el) el.remove();
+            }
+        });
+
         let docsArray = snapshot.docs;
         let hasNewMessages = false;
 
@@ -805,6 +839,7 @@ function loadMessagesFeed() {
 
                 const isSent = msg.username === currentUsername;
                 const div = document.createElement("div");
+                div.id = `msg-${msgId}`;
                 div.className = `msg ${isSent ? 'sent' : 'received'}`;
                 const readableTime = formatMessageTime(msg.timestamp);
 
@@ -835,6 +870,12 @@ function loadMessagesFeed() {
                     `;
                 }
 
+                // Delete button for user's own messages
+                let deleteBtnHTML = "";
+                if (isSent) {
+                    deleteBtnHTML = `<button type="button" class="delete-msg-btn" title="Delete message" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; opacity: 0.6; margin-left: 6px;">🗑️</button>`;
+                }
+
                 const avatarImgElement = document.createElement("img");
                 avatarImgElement.className = "msg-avatar-img";
                 avatarImgElement.alt = "Avatar";
@@ -848,12 +889,26 @@ function loadMessagesFeed() {
                         <div class="msg-header">
                             ${!isSent ? `<span class="msg-author">${renderUsernameWithCrown(msg.username)}</span>` : ""}
                             <span class="msg-time">${readableTime}</span>
+                            ${deleteBtnHTML}
                         </div>
                         ${replyHTML}
                         <div class="msg-bubble">${contentHTML}</div>
                     </div>
                 `;
                 div.prepend(avatarImgElement);
+
+                if (isSent) {
+                    const delBtn = div.querySelector(".delete-msg-btn");
+                    delBtn?.addEventListener("click", async () => {
+                        if (confirm("Are you sure you want to delete this message?")) {
+                            try {
+                                await deleteDoc(doc(db, "messages", msgId));
+                            } catch (err) {
+                                alert("Failed to delete message: " + err.message);
+                            }
+                        }
+                    });
+                }
 
                 div.addEventListener("dblclick", () => {
                     if (currentUsername === "Guest") return;
@@ -995,14 +1050,27 @@ async function loadFriendsAndRequests() {
     } else {
         for (const friend of friends) {
             const avatarUrl = await getLiveUserAvatar(friend);
+            
+            // Check online presence based on lastSeen timestamp within the last 45 seconds
+            const friendDoc = await getDoc(doc(db, "users", friend));
+            let isOnline = false;
+            if (friendDoc.exists() && friendDoc.data().lastSeen) {
+                const lastSeenDate = friendDoc.data().lastSeen.toDate();
+                const diffSecs = (new Date() - lastSeenDate) / 1000;
+                if (diffSecs < 45) isOnline = true;
+            }
+
             const row = document.createElement("div");
             row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;";
             row.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
+                <div style="display: flex; align-items: center; gap: 10px; position: relative;">
+                    <div style="position: relative;">
+                        <img src="${avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; display: block;" />
+                        <span style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: ${isOnline ? 'var(--success, #22c55e)' : '#9ca3af'}; border-radius: 50%; border: 1px solid var(--card-bg);"></span>
+                    </div>
                     <span style="font-weight: 600;">DM @${sanitizeMessageHTML(friend)}</span>
                 </div>
-                <span style="font-size: 12px; color: var(--success);">Connected</span>
+                <span style="font-size: 12px; color: ${isOnline ? 'var(--success, #22c55e)' : 'var(--text-muted)'};">${isOnline ? 'Online' : 'Offline'}</span>
             `;
             row.addEventListener("click", () => openDirectMessage(friend));
             friendsListContainer.appendChild(row);
