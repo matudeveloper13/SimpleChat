@@ -6,6 +6,8 @@
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>matuchat</title>
     <link rel="stylesheet" href="style.css?v=dmphoto1" />
+    <!-- Twemoji Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="dark-mode">
 
@@ -41,7 +43,7 @@
                 <button id="exit-dm-btn" class="btn btn-secondary hidden" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">❌ Exit DM</button>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <!-- Friends & DMs Button using friends.png image -->
+                <!-- Friends & DMs Button -->
                 <button id="nav-friends-btn" class="friends-nav-pill" title="Open Friends & Requests">
                     <img src="friends.png" alt="Friends" class="friends-nav-icon" />
                     <span>Friends & DMs</span>
@@ -59,7 +61,7 @@
                         <span class="msg-time">Just now</span>
                     </div>
                     <div class="msg-bubble">
-                        ✨ Welcome! Click friend usernames to chat in Direct Messages. Photo sharing is exclusive to DMs.
+                        ✨ Welcome! Click friend usernames to chat in Direct Messages. Photo sharing is exclusive to DMs. 😀 ❤️ 🔥
                     </div>
                 </div>
             </div>
@@ -174,7 +176,7 @@
     </div>
 </div>
 
-<!-- Avatar Selector Modal -->
+<!-- Avatar Selector Modal (Cleaned: Single "Set custom Profile" & Back button under it) -->
 <div id="avatar-selector-overlay" class="overlay hidden">
     <div class="modal">
         <h2>Choose Your Avatar</h2>
@@ -186,7 +188,6 @@
             <img class="preset-avatar" src="avatar5.png" data-avatar="avatar5.png" alt="avatar5" />
         </div>
         
-        <!-- Clean Single Custom PFP Option -->
         <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
             <input type="file" id="custom-avatar-file-input" accept="image/*" class="hidden" />
             <button id="upload-custom-avatar-btn" class="btn btn-secondary full-width">Set custom Profile</button>
@@ -211,38 +212,58 @@
     </div>
 </div>
 
-<!-- Background Stars & Auto-Scroll Controller -->
+<!-- Background Stars, Smooth Auto-Scroll to Newest Message & Twemoji Parsing -->
 <script>
+    // 1. Stars Animation
     const starsContainer = document.getElementById("stars-container");
-    for (let i = 0; i < 30; i++) {
-        const star = document.createElement("div");
-        star.className = "star";
-        star.style.left = `${Math.random() * 100}vw`;
-        star.style.top = `${Math.random() * -100}vh`;
-        star.style.width = `${2 + Math.random() * 2}px`;
-        star.style.height = star.style.width;
-        star.style.animationDuration = `${6 + Math.random() * 4}s`;
-        star.style.animationDelay = `${Math.random() * 5}s`;
-        starsContainer.appendChild(star);
+    if (starsContainer) {
+        for (let i = 0; i < 30; i++) {
+            const star = document.createElement("div");
+            star.className = "star";
+            star.style.left = `${Math.random() * 100}vw`;
+            star.style.top = `${Math.random() * -100}vh`;
+            star.style.width = `${2 + Math.random() * 2}px`;
+            star.style.height = star.style.width;
+            star.style.animationDuration = `${6 + Math.random() * 4}s`;
+            star.style.animationDelay = `${Math.random() * 5}s`;
+            starsContainer.appendChild(star);
+        }
     }
 
-    // Auto-Scroll Logic: Ensures feed always stays focused on newest message (bottom)
-    const messagesBox = document.getElementById("messages-container");
-    if (messagesBox) {
-        const scrollToNewest = () => {
-            messagesBox.scrollTop = messagesBox.scrollHeight;
-        };
-        
-        // Instant initial scroll on load
-        setTimeout(scrollToNewest, 100);
+    // 2. Auto-Scroll To Bottom & Twemoji Parser (Works alongside your existing app.js)
+    const msgContainer = document.getElementById("messages-container");
+    
+    function parseLocalTwemojis(targetEl) {
+        if (typeof twemoji !== 'undefined' && targetEl) {
+            twemoji.parse(targetEl, {
+                folder: 'svg',
+                base: './twemoji-main/twemoji-main/assets/'
+            });
+        }
+    }
 
-        // Auto-scroll on new messages added to DOM
+    function jumpToNewestMessage() {
+        if (msgContainer) {
+            msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+    }
+
+    if (msgContainer) {
+        // Scroll down immediately when site loads
+        setTimeout(() => {
+            jumpToNewestMessage();
+            parseLocalTwemojis(msgContainer);
+        }, 100);
+
+        // Keep scrolling & parsing automatically as new messages load or arrive
         const observer = new MutationObserver(() => {
-            scrollToNewest();
+            parseLocalTwemojis(msgContainer);
+            jumpToNewestMessage();
         });
-        observer.observe(messagesBox, { childList: true, subtree: true });
+        observer.observe(msgContainer, { childList: true, subtree: true });
     }
 </script>
+
 <script type="module" src="app.js"></script>
 </body>
 </html>
