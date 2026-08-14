@@ -9,59 +9,51 @@
     <!-- High-Speed CDN Twemoji Library -->
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <style>
-        /* Global Discord-Style Emoji Auto-Sizing */
+        /* 1. Global Discord-Style Emoji Auto-Sizing for Text Emojis */
         img.emoji {
-            height: 1.2em !important;
-            width: 1.2em !important;
+            height: 1.25em !important;
+            width: 1.25em !important;
             margin: 0 0.1em !important;
             vertical-align: -0.2em !important;
             display: inline-block !important;
         }
 
-        /* Falling Background Discord Emojis */
-        .falling-emoji {
-            position: absolute;
-            user-select: none;
-            pointer-events: none;
-            animation: fallAnimation linear infinite;
-            z-index: 0;
-            opacity: 0.6;
+        /* 2. Fix Giant 400x400 Emojis, Avatars, and GIFs Inside Messages */
+        .msg-bubble img {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 6px;
+            vertical-align: middle;
         }
 
-        @keyframes fallAnimation {
-            0% {
-                transform: translateY(-100px) rotate(0deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.7;
-            }
-            90% {
-                opacity: 0.7;
-            }
-            100% {
-                transform: translateY(105vh) rotate(360deg);
-                opacity: 0;
-            }
+        /* If an avatar/custom emoji is inserted inline, keep it small like a standard emoji */
+        .msg-bubble img.custom-emoji,
+        .msg-bubble img[src*="avatar"] {
+            width: 28px !important;
+            height: 28px !important;
+            max-width: 28px !important;
+            max-height: 28px !important;
+            display: inline-block !important;
+            vertical-align: -0.3em !important;
+            object-fit: cover !important;
         }
 
-        /* Loader Spinner Keyframes */
+        /* 3. Smooth Loader Animation Keyframes */
         @keyframes chatSpinner {
             to { transform: rotate(360deg); }
         }
 
-        /* Prevent Flex-Grow Gaps in Messages Container */
-        .messages-box {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            min-height: min-content;
+        /* 4. Strictly Hide Messages Until Snapped to Bottom */
+        #messages-container.loading-active {
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
     </style>
 </head>
 <body class="dark-mode">
 
-<!-- Background Falling Emojis Container -->
+<!-- Background Stars / Falling Container -->
 <div class="stars-container" id="stars-container"></div>
 
 <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="absolute-discord-logo" title="Join Discord">
@@ -80,7 +72,6 @@
             </div>
         </div>
         <div id="user-status" class="user-status">
-            <!-- Discord-style SVG Theme Toggle -->
             <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">🌙</button>
             <button id="logout-btn" class="btn btn-danger hidden" style="padding: 4px 10px; font-size: 12px;">Log Out</button>
             <button id="auth-modal-btn" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Sign In</button>
@@ -95,7 +86,6 @@
                 <button id="exit-dm-btn" class="btn btn-secondary hidden" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">❌ Exit DM</button>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <!-- Friends & DMs Button -->
                 <button id="nav-friends-btn" class="friends-nav-pill" title="Open Friends & Requests">
                     <img src="friends.png" alt="Friends" class="friends-nav-icon" />
                     <span>Friends & DMs</span>
@@ -106,16 +96,16 @@
         <!-- Message Feed Wrapper -->
         <div style="position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
             
-            <!-- Seamless Loading Screen Overlay -->
-            <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; align-items: center; justify-content: center; z-index: 100; color: var(--text-muted, #888); font-size: 14px; font-weight: 600; transition: opacity 0.2s ease;">
+            <!-- Heavy Loader Overlay (Covers the entire chat box until messages finish rendering) -->
+            <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; color: var(--text-muted, #888); font-size: 14px; font-weight: 600; transition: opacity 0.25s ease;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 18px; height: 18px; border: 2.5px solid #444; border-top-color: #5865F2; border-radius: 50%; animation: chatSpinner 0.7s linear infinite;"></div>
-                    <span>Loading messages...</span>
+                    <div style="width: 22px; height: 22px; border: 3px solid #333; border-top-color: #5865F2; border-radius: 50%; animation: chatSpinner 0.7s linear infinite;"></div>
+                    <span style="color: #fff; font-size: 15px;">Loading messages...</span>
                 </div>
             </div>
 
-            <!-- Messages List (Completely empty initially to prevent space bugs) -->
-            <div id="messages-container" class="messages-box"></div>
+            <!-- Messages Box (Starts hidden via 'loading-active' class) -->
+            <div id="messages-container" class="messages-box loading-active" style="flex: 1; overflow-y: auto;"></div>
 
         </div>
 
@@ -264,9 +254,9 @@
     </div>
 </div>
 
-<!-- Optimized Global Scripts -->
+<!-- Optimized Scripts: Zero-Flash Snap & Site-Wide Discord Twemoji -->
 <script>
-    // 1. High-Speed Twemoji Converter Config (Discord Emoji Base)
+    // 1. High-Speed Twemoji Converter Config (CDN)
     const TWEMOJI_CFG = {
         folder: 'svg',
         ext: '.svg',
@@ -279,30 +269,29 @@
         }
     }
 
-    // 2. Falling Discord Emojis in Background
+    // 2. Original Background Stars Generator + Discord Twemoji Conversion
     const starsContainer = document.getElementById("stars-container");
-    const bgEmojiList = ["✨", "🚀", "💬", "🔥", "⭐", "🎉", "💖", "⚡"];
-
     if (starsContainer) {
-        bgEmojiList.forEach((char) => {
-            for (let i = 0; i < 3; i++) {
-                const el = document.createElement("div");
-                el.className = "falling-emoji";
-                el.innerText = char;
-                el.style.left = `${Math.random() * 95}vw`;
-                el.style.fontSize = `${16 + Math.random() * 16}px`;
-                el.style.animationDuration = `${8 + Math.random() * 10}s`;
-                el.style.animationDelay = `${Math.random() * 8}s`;
-                starsContainer.appendChild(el);
-            }
-        });
+        for (let i = 0; i < 30; i++) {
+            const star = document.createElement("div");
+            star.className = "star";
+            star.style.left = `${Math.random() * 100}vw`;
+            star.style.top = `${Math.random() * -100}vh`;
+            star.style.width = `${2 + Math.random() * 2}px`;
+            star.style.height = star.style.width;
+            star.style.animationDuration = `${6 + Math.random() * 4}s`;
+            star.style.animationDelay = `${Math.random() * 5}s`;
+            starsContainer.appendChild(star);
+        }
+        parseNodeTwemoji(starsContainer);
     }
 
-    // Convert everything on load + live observation for dynamic items
+    // Convert existing static site elements on startup
     window.addEventListener("DOMContentLoaded", () => {
         parseNodeTwemoji(document.body);
     });
 
+    // Converts any newly spawned dynamic elements across the whole site instantly
     const globalObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
@@ -314,51 +303,65 @@
     });
     globalObserver.observe(document.body, { childList: true, subtree: true });
 
-    // 3. Instant & Silent Scroll-Snap Overlay Controller
+    // 3. ZERO-FLASH Message Snap & Loader Controller
     const msgContainer = document.getElementById("messages-container");
     const chatLoader = document.getElementById("chat-loader");
 
     function forceInstantBottomScroll() {
         if (!msgContainer) return;
-        msgContainer.style.scrollBehavior = 'auto';
+        msgContainer.style.scrollBehavior = 'auto'; // Disable animation so it jumps instantly
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
     if (msgContainer) {
-        let loadTimer = null;
+        let loadDebounceTimer = null;
 
         const chatObserver = new MutationObserver(() => {
-            // Instantly snap scrollbar down behind the loader overlay
+            // Keep container hidden while messages populate
+            msgContainer.classList.add('loading-active');
+            if (chatLoader) chatLoader.style.display = 'flex';
+
             forceInstantBottomScroll();
 
-            // Wait until message stream stops before removing overlay
-            clearTimeout(loadTimer);
-            loadTimer = setTimeout(() => {
+            clearTimeout(loadDebounceTimer);
+            loadDebounceTimer = setTimeout(() => {
+                // All backlog messages have finished appending!
                 parseNodeTwemoji(msgContainer);
                 forceInstantBottomScroll();
 
-                // Smoothly fade out loader AFTER scrolling is already finished
+                // Un-hide the message container ONLY after scrollbar is firmly at the bottom
+                msgContainer.classList.remove('loading-active');
+
+                // Fade out loader screen cleanly
                 if (chatLoader) {
                     chatLoader.style.opacity = '0';
                     setTimeout(() => {
                         chatLoader.style.display = 'none';
-                    }, 200);
+                        chatLoader.style.opacity = '1';
+                    }, 250);
                 }
+
+                // Turn smooth scrolling back on for active typing/chatting
                 msgContainer.style.scrollBehavior = 'smooth';
-            }, 300);
+            }, 350);
         });
 
+        // Track when new message elements land in the chat box
         chatObserver.observe(msgContainer, { childList: true, subtree: false });
 
-        // Backup safety timeout (Max 3 seconds)
+        // Backup timer to uncover chat if the database is empty or takes >2.5s
         setTimeout(() => {
             forceInstantBottomScroll();
+            msgContainer.classList.remove('loading-active');
             if (chatLoader && chatLoader.style.display !== 'none') {
                 chatLoader.style.opacity = '0';
-                setTimeout(() => { chatLoader.style.display = 'none'; }, 200);
-                msgContainer.style.scrollBehavior = 'smooth';
+                setTimeout(() => {
+                    chatLoader.style.display = 'none';
+                    chatLoader.style.opacity = '1';
+                }, 250);
             }
-        }, 3000);
+            msgContainer.style.scrollBehavior = 'smooth';
+        }, 2500);
     }
 </script>
 
