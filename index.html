@@ -6,7 +6,7 @@
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>matuchat</title>
     <link rel="stylesheet" href="style.css?v=dmphoto1" />
-    <!-- Twemoji Engine -->
+    <!-- Twemoji Engine Library -->
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="dark-mode">
@@ -176,7 +176,7 @@
     </div>
 </div>
 
-<!-- Avatar Selector Modal (Cleaned: Single "Set custom Profile" & Back button under it) -->
+<!-- Avatar Selector Modal -->
 <div id="avatar-selector-overlay" class="overlay hidden">
     <div class="modal">
         <h2>Choose Your Avatar</h2>
@@ -212,7 +212,7 @@
     </div>
 </div>
 
-<!-- Background Stars, Smooth Auto-Scroll to Newest Message & Twemoji Parsing -->
+<!-- Background Stars, Instant Load Jump & CDN Twemoji Parsing -->
 <script>
     // 1. Stars Animation
     const starsContainer = document.getElementById("stars-container");
@@ -230,36 +230,45 @@
         }
     }
 
-    // 2. Auto-Scroll To Bottom & Twemoji Parser (Works alongside your existing app.js)
+    // 2. Instant Scroll Jump & Debounced Twemoji Parser
     const msgContainer = document.getElementById("messages-container");
-    
-    function parseLocalTwemojis(targetEl) {
+    let parseTimeout = null;
+
+    function snapToBottomInstant() {
+        if (!msgContainer) return;
+        msgContainer.style.scrollBehavior = 'auto'; // Disable smooth animation temporarily
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    function parseTwemojis(targetEl) {
         if (typeof twemoji !== 'undefined' && targetEl) {
             twemoji.parse(targetEl, {
                 folder: 'svg',
-                base: './twemoji-main/twemoji-main/assets/'
+                ext: '.svg',
+                base: 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/'
             });
         }
     }
 
-    function jumpToNewestMessage() {
-        if (msgContainer) {
-            msgContainer.scrollTop = msgContainer.scrollHeight;
-        }
-    }
-
     if (msgContainer) {
-        // Scroll down immediately when site loads
-        setTimeout(() => {
-            jumpToNewestMessage();
-            parseLocalTwemojis(msgContainer);
-        }, 100);
+        // Snap immediately on boot
+        snapToBottomInstant();
 
-        // Keep scrolling & parsing automatically as new messages load or arrive
         const observer = new MutationObserver(() => {
-            parseLocalTwemojis(msgContainer);
-            jumpToNewestMessage();
+            // Instantly snap to the bottom on every message injected (no smooth animation)
+            snapToBottomInstant();
+
+            // Debounce Twemoji parsing so it runs ONCE after the full batch finishes loading
+            clearTimeout(parseTimeout);
+            parseTimeout = setTimeout(() => {
+                parseTwemojis(msgContainer);
+                snapToBottomInstant();
+                
+                // Re-enable smooth scrolling for live chat messages sent afterwards
+                msgContainer.style.scrollBehavior = 'smooth';
+            }, 150);
         });
+
         observer.observe(msgContainer, { childList: true, subtree: true });
     }
 </script>
