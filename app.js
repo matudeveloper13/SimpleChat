@@ -42,7 +42,7 @@ document.body.appendChild(fileInput);
 let selectedImageFile = null;
 let replyingToMessage = null;
 let presenceInterval = null;
-let currentGroupData = null; // Track currently active group data for crown rendering
+let currentGroupData = null;
 
 const authModalBtn = document.getElementById("auth-modal-btn");
 const logoutBtn = document.getElementById("logout-btn");
@@ -66,7 +66,6 @@ if (exitDmBtn) {
     exitDmBtn.style.cursor = "pointer";
 }
 
-// Revert main chat area to single fluid vertical layout (removing any sidebars)
 const globalChatSection = document.getElementById("global-chat-section");
 if (globalChatSection) {
     globalChatSection.style.display = "flex";
@@ -239,6 +238,7 @@ musicPanel.innerHTML = `
     </div>
 `;
 document.body.appendChild(musicPanel);
+
 musicBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     musicPanel.classList.toggle("hidden");
