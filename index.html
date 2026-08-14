@@ -9,7 +9,7 @@
     <!-- High-Speed CDN Twemoji Library -->
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <style>
-        /* Global Discord-Style Emoji Auto-Sizing for ENTIRE Site */
+        /* Global Discord-Style Emoji Auto-Sizing */
         img.emoji {
             height: 1.2em !important;
             width: 1.2em !important;
@@ -18,14 +18,50 @@
             display: inline-block !important;
         }
 
-        /* Smooth Loader Animation Keyframes */
+        /* Falling Background Discord Emojis */
+        .falling-emoji {
+            position: absolute;
+            user-select: none;
+            pointer-events: none;
+            animation: fallAnimation linear infinite;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        @keyframes fallAnimation {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(105vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Loader Spinner Keyframes */
         @keyframes chatSpinner {
             to { transform: rotate(360deg); }
+        }
+
+        /* Prevent Flex-Grow Gaps in Messages Container */
+        .messages-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: min-content;
         }
     </style>
 </head>
 <body class="dark-mode">
 
+<!-- Background Falling Emojis Container -->
 <div class="stars-container" id="stars-container"></div>
 
 <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="absolute-discord-logo" title="Join Discord">
@@ -44,6 +80,7 @@
             </div>
         </div>
         <div id="user-status" class="user-status">
+            <!-- Discord-style SVG Theme Toggle -->
             <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">🌙</button>
             <button id="logout-btn" class="btn btn-danger hidden" style="padding: 4px 10px; font-size: 12px;">Log Out</button>
             <button id="auth-modal-btn" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Sign In</button>
@@ -66,32 +103,19 @@
             </div>
         </div>
 
-        <!-- Message Feed Container with Fast Loader -->
+        <!-- Message Feed Wrapper -->
         <div style="position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
             
-            <!-- Quick Loading Screen Overlay -->
-            <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; align-items: center; justify-content: center; z-index: 10; color: var(--text-muted, #888); font-size: 14px; font-weight: 600;">
+            <!-- Seamless Loading Screen Overlay -->
+            <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; align-items: center; justify-content: center; z-index: 100; color: var(--text-muted, #888); font-size: 14px; font-weight: 600; transition: opacity 0.2s ease;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 18px; height: 18px; border: 2.5px solid #444; border-top-color: #5865F2; border-radius: 50%; animation: chatSpinner 0.7s linear infinite;"></div>
                     <span>Loading messages...</span>
                 </div>
             </div>
 
-            <!-- Messages List (Hidden until snapped to bottom) -->
-            <div id="messages-container" class="messages-box" style="visibility: hidden;">
-                <div class="msg received">
-                    <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
-                    <div class="msg-content">
-                        <div class="msg-header">
-                            <span class="msg-author">System</span>
-                            <span class="msg-time">Just now</span>
-                        </div>
-                        <div class="msg-bubble">
-                            ✨ Welcome! Click friend usernames to chat in Direct Messages. Photo sharing is exclusive to DMs. 😀 ❤️ 🔥
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Messages List (Completely empty initially to prevent space bugs) -->
+            <div id="messages-container" class="messages-box"></div>
 
         </div>
 
@@ -242,23 +266,7 @@
 
 <!-- Optimized Global Scripts -->
 <script>
-    // 1. Stars Animation Background
-    const starsContainer = document.getElementById("stars-container");
-    if (starsContainer) {
-        for (let i = 0; i < 30; i++) {
-            const star = document.createElement("div");
-            star.className = "star";
-            star.style.left = `${Math.random() * 100}vw`;
-            star.style.top = `${Math.random() * -100}vh`;
-            star.style.width = `${2 + Math.random() * 2}px`;
-            star.style.height = star.style.width;
-            star.style.animationDuration = `${6 + Math.random() * 4}s`;
-            star.style.animationDelay = `${Math.random() * 5}s`;
-            starsContainer.appendChild(star);
-        }
-    }
-
-    // 2. High-Speed Twemoji Converter Config (Everywhere on Site)
+    // 1. High-Speed Twemoji Converter Config (Discord Emoji Base)
     const TWEMOJI_CFG = {
         folder: 'svg',
         ext: '.svg',
@@ -271,12 +279,30 @@
         }
     }
 
-    // Parse static site HTML immediately when DOM loads
+    // 2. Falling Discord Emojis in Background
+    const starsContainer = document.getElementById("stars-container");
+    const bgEmojiList = ["✨", "🚀", "💬", "🔥", "⭐", "🎉", "💖", "⚡"];
+
+    if (starsContainer) {
+        bgEmojiList.forEach((char) => {
+            for (let i = 0; i < 3; i++) {
+                const el = document.createElement("div");
+                el.className = "falling-emoji";
+                el.innerText = char;
+                el.style.left = `${Math.random() * 95}vw`;
+                el.style.fontSize = `${16 + Math.random() * 16}px`;
+                el.style.animationDuration = `${8 + Math.random() * 10}s`;
+                el.style.animationDelay = `${Math.random() * 8}s`;
+                starsContainer.appendChild(el);
+            }
+        });
+    }
+
+    // Convert everything on load + live observation for dynamic items
     window.addEventListener("DOMContentLoaded", () => {
         parseNodeTwemoji(document.body);
     });
 
-    // Global Observer: Converts any newly added elements (modals, song pickers, emoji grid, etc.) instantly
     const globalObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
@@ -288,52 +314,51 @@
     });
     globalObserver.observe(document.body, { childList: true, subtree: true });
 
-    // 3. Instant Chat Load & Scroll Snap Controller
+    // 3. Instant & Silent Scroll-Snap Overlay Controller
     const msgContainer = document.getElementById("messages-container");
     const chatLoader = document.getElementById("chat-loader");
-    let isInitialLoadDone = false;
-    let loadTimeout = null;
 
-    function snapToNewestInstant() {
+    function forceInstantBottomScroll() {
         if (!msgContainer) return;
-        msgContainer.style.scrollBehavior = 'auto'; // Disable smooth scroll lag during load
+        msgContainer.style.scrollBehavior = 'auto';
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
     if (msgContainer) {
+        let loadTimer = null;
+
         const chatObserver = new MutationObserver(() => {
-            if (!isInitialLoadDone) {
-                snapToNewestInstant();
+            // Instantly snap scrollbar down behind the loader overlay
+            forceInstantBottomScroll();
 
-                // Wait until database finishes dumping messages
-                clearTimeout(loadTimeout);
-                loadTimeout = setTimeout(() => {
-                    snapToNewestInstant();
+            // Wait until message stream stops before removing overlay
+            clearTimeout(loadTimer);
+            loadTimer = setTimeout(() => {
+                parseNodeTwemoji(msgContainer);
+                forceInstantBottomScroll();
 
-                    // Reveal chat box & hide loading screen
-                    msgContainer.style.visibility = 'visible';
-                    if (chatLoader) chatLoader.style.display = 'none';
-
-                    isInitialLoadDone = true;
-                    msgContainer.style.scrollBehavior = 'smooth'; // Enable smooth scroll for live chat
-                }, 100);
-            } else {
-                snapToNewestInstant();
-            }
+                // Smoothly fade out loader AFTER scrolling is already finished
+                if (chatLoader) {
+                    chatLoader.style.opacity = '0';
+                    setTimeout(() => {
+                        chatLoader.style.display = 'none';
+                    }, 200);
+                }
+                msgContainer.style.scrollBehavior = 'smooth';
+            }, 300);
         });
 
         chatObserver.observe(msgContainer, { childList: true, subtree: false });
 
-        // Backup fallback timer
+        // Backup safety timeout (Max 3 seconds)
         setTimeout(() => {
-            if (!isInitialLoadDone) {
-                snapToNewestInstant();
-                msgContainer.style.visibility = 'visible';
-                if (chatLoader) chatLoader.style.display = 'none';
-                isInitialLoadDone = true;
+            forceInstantBottomScroll();
+            if (chatLoader && chatLoader.style.display !== 'none') {
+                chatLoader.style.opacity = '0';
+                setTimeout(() => { chatLoader.style.display = 'none'; }, 200);
                 msgContainer.style.scrollBehavior = 'smooth';
             }
-        }, 1200);
+        }, 3000);
     }
 </script>
 
