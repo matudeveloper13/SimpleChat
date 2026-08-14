@@ -72,7 +72,6 @@
             </div>
         </div>
         <div id="user-status" class="user-status">
-            <!-- Fixed: Replaced text emoji with Discord SVG moon -->
             <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">
                 <img class="emoji" draggable="false" alt="🌙" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f319.svg" />
             </button>
@@ -320,11 +319,16 @@
         let loadDebounceTimer = null;
         let isInitialLoad = true; // Tracks whether this is the initial session/room load
 
+        // ResizeObserver locks the scroll to bottom continuously as images/twemoji expand heights during load
+        const resizeObserver = new ResizeObserver(() => {
+            if (isInitialLoad) {
+                forceInstantBottomScroll();
+            }
+        });
+        resizeObserver.observe(msgContainer);
+
         const chatObserver = new MutationObserver((mutations) => {
-            // Check if mutations were purely user-sent messages (added at the bottom via app.js)
-            // If it's not the initial load, we do NOT trigger the loader or hide messages when a new message is sent.
             if (!isInitialLoad) {
-                // Just ensure twemoji parses new chat nodes safely without touching the loader/opacity
                 mutations.forEach((mutation) => {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === 1) parseNodeTwemoji(node);
@@ -345,8 +349,12 @@
                 parseNodeTwemoji(msgContainer);
                 forceInstantBottomScroll();
 
-                // Un-hide the message container ONLY after scrollbar is firmly at the bottom
+                // Un-hide the message container
                 msgContainer.classList.remove('loading-active');
+
+                requestAnimationFrame(() => {
+                    forceInstantBottomScroll();
+                });
 
                 // Fade out loader screen cleanly
                 if (chatLoader) {
@@ -359,7 +367,8 @@
 
                 // Turn smooth scrolling back on for active typing/chatting
                 msgContainer.style.scrollBehavior = 'smooth';
-                isInitialLoad = false; // Initial load sequence complete; future chat updates won't trigger loader
+                isInitialLoad = false;
+                resizeObserver.disconnect();
             }, 350);
         });
 
@@ -377,8 +386,12 @@
                     chatLoader.style.opacity = '1';
                 }, 250);
             }
+            requestAnimationFrame(() => {
+                forceInstantBottomScroll();
+            });
             msgContainer.style.scrollBehavior = 'smooth';
             isInitialLoad = false;
+            resizeObserver.disconnect();
         }, 2500);
     }
 </script>
