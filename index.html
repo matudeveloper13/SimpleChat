@@ -6,8 +6,14 @@
     <link rel="icon" type="image/png" href="./icon.png?v=2" />
     <title>matuchat</title>
     <link rel="stylesheet" href="style.css?v=dmphoto1" />
-    <!-- Twemoji Engine Library -->
+    <!-- CDN Twemoji Library (No local files needed) -->
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <style>
+        /* Smooth Spinner Keyframes for Loading Overlay */
+        @keyframes chatSpinner {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body class="dark-mode">
 
@@ -43,7 +49,6 @@
                 <button id="exit-dm-btn" class="btn btn-secondary hidden" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">❌ Exit DM</button>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <!-- Friends & DMs Button -->
                 <button id="nav-friends-btn" class="friends-nav-pill" title="Open Friends & Requests">
                     <img src="friends.png" alt="Friends" class="friends-nav-icon" />
                     <span>Friends & DMs</span>
@@ -51,20 +56,33 @@
             </div>
         </div>
 
-        <!-- Message Feed -->
-        <div id="messages-container" class="messages-box">
-            <div class="msg received">
-                <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
-                <div class="msg-content">
-                    <div class="msg-header">
-                        <span class="msg-author">System</span>
-                        <span class="msg-time">Just now</span>
-                    </div>
-                    <div class="msg-bubble">
-                        ✨ Welcome! Click friend usernames to chat in Direct Messages. Photo sharing is exclusive to DMs. 😀 ❤️ 🔥
+        <!-- Message Feed Container with Loading Overlay -->
+        <div style="position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            
+            <!-- Quick Loading Screen Overlay -->
+            <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; align-items: center; justify-content: center; z-index: 10; color: var(--text-muted, #888); font-size: 14px; font-weight: 600;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 18px; height: 18px; border: 2.5px solid #444; border-top-color: #5865F2; border-radius: 50%; animation: chatSpinner 0.7s linear infinite;"></div>
+                    <span>Loading messages...</span>
+                </div>
+            </div>
+
+            <!-- Messages List (Hidden until fully loaded & snapped to bottom) -->
+            <div id="messages-container" class="messages-box" style="visibility: hidden;">
+                <div class="msg received">
+                    <img class="msg-avatar-img" src="avatar1.png" alt="Avatar" />
+                    <div class="msg-content">
+                        <div class="msg-header">
+                            <span class="msg-author">System</span>
+                            <span class="msg-time">Just now</span>
+                        </div>
+                        <div class="msg-bubble">
+                            ✨ Welcome! Click friend usernames to chat in Direct Messages. Photo sharing is exclusive to DMs. 😀 ❤️ 🔥
+                        </div>
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- Typing Indicator Area -->
@@ -212,7 +230,7 @@
     </div>
 </div>
 
-<!-- Background Stars, Instant Load Jump & CDN Twemoji Parsing -->
+<!-- Stars, Loading Screen Controller & CDN Twemoji Script -->
 <script>
     // 1. Stars Animation
     const starsContainer = document.getElementById("stars-container");
@@ -230,17 +248,19 @@
         }
     }
 
-    // 2. Instant Scroll Jump & Debounced Twemoji Parser
+    // 2. Loading Screen, CDN Twemoji & Instant Jump Logic
     const msgContainer = document.getElementById("messages-container");
-    let parseTimeout = null;
+    const chatLoader = document.getElementById("chat-loader");
+    let isInitialLoadDone = false;
+    let loadTimeout = null;
 
-    function snapToBottomInstant() {
+    function snapToNewestInstant() {
         if (!msgContainer) return;
-        msgContainer.style.scrollBehavior = 'auto'; // Disable smooth animation temporarily
+        msgContainer.style.scrollBehavior = 'auto'; // Disable smooth scroll during load
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
-    function parseTwemojis(targetEl) {
+    function runCdnTwemoji(targetEl) {
         if (typeof twemoji !== 'undefined' && targetEl) {
             twemoji.parse(targetEl, {
                 folder: 'svg',
@@ -251,25 +271,45 @@
     }
 
     if (msgContainer) {
-        // Snap immediately on boot
-        snapToBottomInstant();
-
+        // Observer detects every message appended by app.js
         const observer = new MutationObserver(() => {
-            // Instantly snap to the bottom on every message injected (no smooth animation)
-            snapToBottomInstant();
+            if (!isInitialLoadDone) {
+                // Keep box scrolled to bottom in the background
+                snapToNewestInstant();
 
-            // Debounce Twemoji parsing so it runs ONCE after the full batch finishes loading
-            clearTimeout(parseTimeout);
-            parseTimeout = setTimeout(() => {
-                parseTwemojis(msgContainer);
-                snapToBottomInstant();
-                
-                // Re-enable smooth scrolling for live chat messages sent afterwards
-                msgContainer.style.scrollBehavior = 'smooth';
-            }, 150);
+                // Wait until messages stop firing in rapid succession
+                clearTimeout(loadTimeout);
+                loadTimeout = setTimeout(() => {
+                    // All initial messages finished loading!
+                    runCdnTwemoji(msgContainer);
+                    snapToNewestInstant();
+
+                    // Reveal chat box and remove loading screen
+                    msgContainer.style.visibility = 'visible';
+                    if (chatLoader) chatLoader.style.display = 'none';
+
+                    isInitialLoadDone = true;
+                    msgContainer.style.scrollBehavior = 'smooth'; // Turn smooth scroll back on for live chat
+                }, 200);
+            } else {
+                // Handle live messages sent while chatting
+                snapToNewestInstant();
+                runCdnTwemoji(msgContainer);
+            }
         });
 
         observer.observe(msgContainer, { childList: true, subtree: true });
+
+        // Backup safety timer: Force reveal if database has no messages or takes too long
+        setTimeout(() => {
+            if (!isInitialLoadDone) {
+                snapToNewestInstant();
+                msgContainer.style.visibility = 'visible';
+                if (chatLoader) chatLoader.style.display = 'none';
+                isInitialLoadDone = true;
+                msgContainer.style.scrollBehavior = 'smooth';
+            }
+        }, 2500);
     }
 </script>
 
