@@ -49,115 +49,6 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
-
-        /* 5. Music Player Floating Button & Panel Styles */
-        .absolute-music-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 44px;
-            height: 44px;
-            background: #2b2d31;
-            border: 1px solid var(--border-color, #3f4147);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s ease, background 0.2s ease;
-        }
-        .absolute-music-btn:hover {
-            transform: scale(1.05);
-            background: #35373c;
-        }
-        .absolute-music-btn img {
-            width: 20px;
-            height: 20px;
-        }
-
-        .music-player-panel {
-            position: fixed;
-            top: 75px;
-            right: 20px;
-            width: 280px;
-            max-height: 420px;
-            overflow-y: auto;
-            background: #1e1f22;
-            border: 1px solid var(--border-color, #3f4147);
-            border-radius: 12px;
-            padding: 16px;
-            z-index: 1000;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .music-player-panel.hidden {
-            display: none;
-        }
-        .music-player-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #f2f3f5;
-            margin-bottom: 4px;
-        }
-        .music-track-btn {
-            background: #2b2d31;
-            border: 1px solid #3f4147;
-            color: #dbdee1;
-            padding: 10px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            text-align: left;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.2s ease, border-color 0.2s ease;
-        }
-        .music-track-btn:hover {
-            background: #35373c;
-            border-color: #5865f2;
-            color: #fff;
-        }
-        .music-controls-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 4px;
-        }
-        .music-stop-btn {
-            flex: 1;
-            background: #ed4245;
-            color: #fff;
-            border: none;
-            padding: 10px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
-            transition: opacity 0.2s ease;
-        }
-        .music-stop-btn:hover {
-            opacity: 0.9;
-        }
-        .music-loop-btn {
-            flex: 1;
-            background: #2b2d31;
-            border: 1px solid #3f4147;
-            color: #dbdee1;
-            padding: 10px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .music-loop-btn:hover {
-            background: #35373c;
-        }
     </style>
 </head>
 <body class="dark-mode">
@@ -168,30 +59,6 @@
 <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="absolute-discord-logo" title="Join Discord">
     <img src="discord.png" alt="Discord" />
 </a>
-
-<!-- Music Player Floating Toggle Button -->
-<button id="music-toggle-btn" class="absolute-music-btn" title="Toggle Music Player">
-    🎵
-</button>
-
-<!-- Music Player Dropdown Panel (Includes all tracks) -->
-<div id="music-player-panel" class="music-player-panel hidden">
-    <div class="music-player-title">Music Player</div>
-    <button class="music-track-btn" data-track="relaxing.mp3">▶ relaxing.mp3</button>
-    <button class="music-track-btn" data-track="ordinary.mp3">▶ ordinary.mp3</button>
-    <button class="music-track-btn" data-track="meep.mp3">▶ meep.mp3</button>
-    <button class="music-track-btn" data-track="imagination.mp3">▶ imagination.mp3</button>
-    <button class="music-track-btn" data-track="beatle.mp3">▶ beatle.mp3</button>
-    <button class="music-track-btn" data-track="buur.mp3">▶ buur.mp3</button>
-    <button class="music-track-btn" data-track="call.mp3">▶ call.mp3</button>
-    <button class="music-track-btn" data-track="calm.mp3">▶ calm.mp3</button>
-    <button class="music-track-btn" data-track="enemy.mp3">▶ enemy.mp3</button>
-    <button class="music-track-btn" data-track="nojbee.mp3">▶ nojbee.mp3</button>
-    <div class="music-controls-row">
-        <button id="music-stop-btn" class="music-stop-btn">Stop</button>
-        <button id="music-loop-btn" class="music-loop-btn">Loop: Off</button>
-    </div>
-</div>
 
 <main class="chat-container">
     <!-- Header -->
@@ -231,7 +98,7 @@
         <!-- Message Feed Wrapper -->
         <div style="position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
             
-            <!-- Heavy Loader Overlay -->
+            <!-- Heavy Loader Overlay (Covers the entire chat box until messages finish rendering) -->
             <div id="chat-loader" style="position: absolute; inset: 0; background: var(--bg-color, #121218); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; color: var(--text-muted, #888); font-size: 14px; font-weight: 600; transition: opacity 0.25s ease;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 22px; height: 22px; border: 3px solid #333; border-top-color: #5865F2; border-radius: 50%; animation: chatSpinner 0.7s linear infinite;"></div>
@@ -239,7 +106,7 @@
                 </div>
             </div>
 
-            <!-- Messages Box -->
+            <!-- Messages Box (Starts hidden via 'loading-active' class) -->
             <div id="messages-container" class="messages-box loading-active" style="flex: 1; overflow-y: auto;"></div>
 
         </div>
@@ -389,8 +256,9 @@
     </div>
 </div>
 
-<!-- Scripts -->
+<!-- Optimized Scripts: Zero-Flash Snap & Site-Wide Discord Twemoji -->
 <script>
+    // 1. High-Speed Twemoji Converter Config (CDN)
     const TWEMOJI_CFG = {
         folder: 'svg',
         ext: '.svg',
@@ -403,6 +271,7 @@
         }
     }
 
+    // 2. Original Background Stars Generator + Discord Twemoji Conversion
     const starsContainer = document.getElementById("stars-container");
     if (starsContainer) {
         for (let i = 0; i < 30; i++) {
@@ -419,10 +288,12 @@
         parseNodeTwemoji(starsContainer);
     }
 
+    // Convert existing static site elements on startup
     window.addEventListener("DOMContentLoaded", () => {
         parseNodeTwemoji(document.body);
     });
 
+    // Converts any newly spawned dynamic elements across the whole site instantly
     const globalObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
@@ -434,19 +305,21 @@
     });
     globalObserver.observe(document.body, { childList: true, subtree: true });
 
+    // 3. ZERO-FLASH Message Snap & Loader Controller (Strictly Initial Load / Room Switch Only)
     const msgContainer = document.getElementById("messages-container");
     const chatLoader = document.getElementById("chat-loader");
 
     function forceInstantBottomScroll() {
         if (!msgContainer) return;
-        msgContainer.style.scrollBehavior = 'auto';
+        msgContainer.style.scrollBehavior = 'auto'; // Disable animation so it jumps instantly
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
     if (msgContainer) {
         let loadDebounceTimer = null;
-        let isInitialLoad = true;
+        let isInitialLoad = true; // Tracks whether this is the initial session/room load
 
+        // ResizeObserver locks the scroll to bottom continuously as images/twemoji expand heights during load
         const resizeObserver = new ResizeObserver(() => {
             if (isInitialLoad) {
                 forceInstantBottomScroll();
@@ -464,6 +337,7 @@
                 return;
             }
 
+            // Keep container hidden while initial backlog messages populate
             msgContainer.classList.add('loading-active');
             if (chatLoader) chatLoader.style.display = 'flex';
 
@@ -471,15 +345,18 @@
 
             clearTimeout(loadDebounceTimer);
             loadDebounceTimer = setTimeout(() => {
+                // All initial backlog messages have finished appending!
                 parseNodeTwemoji(msgContainer);
                 forceInstantBottomScroll();
 
+                // Un-hide the message container
                 msgContainer.classList.remove('loading-active');
 
                 requestAnimationFrame(() => {
                     forceInstantBottomScroll();
                 });
 
+                // Fade out loader screen cleanly
                 if (chatLoader) {
                     chatLoader.style.opacity = '0';
                     setTimeout(() => {
@@ -488,14 +365,17 @@
                     }, 250);
                 }
 
+                // Turn smooth scrolling back on for active typing/chatting
                 msgContainer.style.scrollBehavior = 'smooth';
                 isInitialLoad = false;
                 resizeObserver.disconnect();
             }, 350);
         });
 
+        // Track when message elements land in the chat box
         chatObserver.observe(msgContainer, { childList: true, subtree: false });
 
+        // Backup timer to uncover chat if the database is empty or takes >2.5s
         setTimeout(() => {
             forceInstantBottomScroll();
             msgContainer.classList.remove('loading-active');
@@ -513,54 +393,6 @@
             isInitialLoad = false;
             resizeObserver.disconnect();
         }, 2500);
-    }
-
-    // Music Player Interactive Logic
-    const musicToggleBtn = document.getElementById("music-toggle-btn");
-    const musicPlayerPanel = document.getElementById("music-player-panel");
-    const musicStopBtn = document.getElementById("music-stop-btn");
-    const musicLoopBtn = document.getElementById("music-loop-btn");
-    const trackButtons = document.querySelectorAll(".music-track-btn");
-
-    let currentAudio = null;
-    let isLooping = false;
-
-    if (musicToggleBtn && musicPlayerPanel) {
-        musicToggleBtn.addEventListener("click", () => {
-            musicPlayerPanel.classList.toggle("hidden");
-        });
-    }
-
-    trackButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-            const trackFile = btn.getAttribute("data-track");
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-            }
-            currentAudio = new Audio(trackFile);
-            currentAudio.loop = isLooping;
-            currentAudio.play().catch(err => console.log("Audio play blocked or file missing:", err));
-        });
-    });
-
-    if (musicStopBtn) {
-        musicStopBtn.addEventListener("click", () => {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-            }
-        });
-    }
-
-    if (musicLoopBtn) {
-        musicLoopBtn.addEventListener("click", () => {
-            isLooping = !isLooping;
-            musicLoopBtn.textContent = isLooping ? "Loop: On" : "Loop: Off";
-            if (currentAudio) {
-                currentAudio.loop = isLooping;
-            }
-        });
     }
 </script>
 

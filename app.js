@@ -218,7 +218,7 @@ document.body.appendChild(musicBtn);
 const musicPanel = document.createElement("div");
 musicPanel.id = "music-panel";
 musicPanel.className = "hidden";
-musicPanel.style.cssText = "position: fixed; top: 65px; right: 15px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; z-index: 99999; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);";
+musicPanel.style.cssText = "position: fixed; top: 65px; right: 15px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; z-index: 99999; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 420px; overflow-y: auto;";
 musicPanel.innerHTML = `
     <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-color);">Music Player</h4>
     <div id="music-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
@@ -226,6 +226,12 @@ musicPanel.innerHTML = `
         <button class="btn btn-secondary music-track-btn" data-src="ordinary.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ ordinary.mp3</button>
         <button class="btn btn-secondary music-track-btn" data-src="meep.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ meep.mp3</button>
         <button class="btn btn-secondary music-track-btn" data-src="imagination.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ imagination.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="beatle.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ beatle.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="buur.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ buur.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="call.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ call.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="calm.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ calm.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="enemy.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ enemy.mp3</button>
+        <button class="btn btn-secondary music-track-btn" data-src="nojbee.mp3" style="width: 100%; text-align: left; font-size: 12px; padding: 6px;">▶ nojbee.mp3</button>
     </div>
     <div style="display: flex; gap: 6px;">
         <button id="music-stop-btn" class="btn btn-secondary" style="flex: 1; font-size: 12px; background: #ef4444; color: #fff; border: none;">Stop</button>
@@ -233,7 +239,6 @@ musicPanel.innerHTML = `
     </div>
 `;
 document.body.appendChild(musicPanel);
-
 musicBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     musicPanel.classList.toggle("hidden");
