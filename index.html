@@ -72,7 +72,10 @@
             </div>
         </div>
         <div id="user-status" class="user-status">
-            <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">🌙</button>
+            <!-- Fixed: Replaced text emoji with Discord SVG moon -->
+            <button id="theme-toggle-btn" class="theme-toggle-pill" title="Toggle Light/Dark Mode">
+                <img class="emoji" draggable="false" alt="🌙" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f319.svg" />
+            </button>
             <button id="logout-btn" class="btn btn-danger hidden" style="padding: 4px 10px; font-size: 12px;">Log Out</button>
             <button id="auth-modal-btn" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">Sign In</button>
         </div>
@@ -303,7 +306,7 @@
     });
     globalObserver.observe(document.body, { childList: true, subtree: true });
 
-    // 3. ZERO-FLASH Message Snap & Loader Controller
+    // 3. ZERO-FLASH Message Snap & Loader Controller (Strictly Initial Load / Room Switch Only)
     const msgContainer = document.getElementById("messages-container");
     const chatLoader = document.getElementById("chat-loader");
 
@@ -315,9 +318,22 @@
 
     if (msgContainer) {
         let loadDebounceTimer = null;
+        let isInitialLoad = true; // Tracks whether this is the initial session/room load
 
-        const chatObserver = new MutationObserver(() => {
-            // Keep container hidden while messages populate
+        const chatObserver = new MutationObserver((mutations) => {
+            // Check if mutations were purely user-sent messages (added at the bottom via app.js)
+            // If it's not the initial load, we do NOT trigger the loader or hide messages when a new message is sent.
+            if (!isInitialLoad) {
+                // Just ensure twemoji parses new chat nodes safely without touching the loader/opacity
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) parseNodeTwemoji(node);
+                    });
+                });
+                return;
+            }
+
+            // Keep container hidden while initial backlog messages populate
             msgContainer.classList.add('loading-active');
             if (chatLoader) chatLoader.style.display = 'flex';
 
@@ -325,7 +341,7 @@
 
             clearTimeout(loadDebounceTimer);
             loadDebounceTimer = setTimeout(() => {
-                // All backlog messages have finished appending!
+                // All initial backlog messages have finished appending!
                 parseNodeTwemoji(msgContainer);
                 forceInstantBottomScroll();
 
@@ -343,10 +359,11 @@
 
                 // Turn smooth scrolling back on for active typing/chatting
                 msgContainer.style.scrollBehavior = 'smooth';
+                isInitialLoad = false; // Initial load sequence complete; future chat updates won't trigger loader
             }, 350);
         });
 
-        // Track when new message elements land in the chat box
+        // Track when message elements land in the chat box
         chatObserver.observe(msgContainer, { childList: true, subtree: false });
 
         // Backup timer to uncover chat if the database is empty or takes >2.5s
@@ -361,6 +378,7 @@
                 }, 250);
             }
             msgContainer.style.scrollBehavior = 'smooth';
+            isInitialLoad = false;
         }, 2500);
     }
 </script>
