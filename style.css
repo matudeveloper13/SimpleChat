@@ -62,6 +62,7 @@ body {
   transition: background 0.3s ease;
 }
 
+/* Background Stars Effect */
 .stars-container {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
 }
@@ -83,6 +84,7 @@ body {
 .absolute-discord-logo:hover { transform: scale(1.1); }
 .absolute-discord-logo img { width: 20px; height: 20px; object-fit: contain; }
 
+/* Main Container */
 .chat-container {
   width: 100%; max-width: 650px; height: 88vh; background: var(--card-bg); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; z-index: 5; border: 1px solid var(--border-color); overflow: hidden; position: relative;
 }
@@ -129,7 +131,7 @@ body {
   box-shadow: 0 2px 8px rgba(0, 132, 255, 0.25);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   transition: all 0.2s ease;
   user-select: none;
 }
@@ -143,8 +145,20 @@ body {
   box-shadow: 0 2px 4px rgba(0, 132, 255, 0.2);
 }
 
+/* Scaled friends.png image inside button */
+.friends-nav-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+/* Messages & Feed */
 .messages-box {
-  flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background: var(--bg-color);
+  flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background: var(--bg-color); scroll-behavior: smooth;
 }
 
 .msg { display: flex; gap: 12px; max-width: 80%; animation: fadeIn 0.2s ease; }
@@ -155,7 +169,7 @@ body {
 
 .msg-content { display: flex; flex-direction: column; }
 .msg.sent .msg-content { align-items: flex-end; }
-.msg-received .msg-content { align-items: flex-start; }
+.msg.received .msg-content { align-items: flex-start; }
 
 .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; }
 .msg-author { font-weight: 600; color: var(--text-main); cursor: pointer; }
@@ -168,7 +182,17 @@ body {
 .msg.received .msg-bubble { background: var(--bubble-received); color: var(--text-main); border: 1px solid var(--border-color); border-top-left-radius: 4px; }
 .msg.sent .msg-bubble { background: var(--bubble-sent); color: var(--bubble-sent-text); border-top-right-radius: 4px; }
 
-/* Strictly locks inline avatar emojis to tiny 24px rounded elements */
+/* Twemoji & Custom Inline Emojis */
+img.emoji, .twemoji {
+  height: 1.25em;
+  width: 1.25em;
+  margin: 0 0.15em 0.1em 0.15em;
+  vertical-align: -0.2em;
+  object-fit: contain;
+  display: inline-block;
+  pointer-events: none;
+}
+
 .inline-avatar-emoji {
   width: 24px !important;
   height: 24px !important;
@@ -182,13 +206,13 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
-/* Force MP4 Videos to act strictly as non-interactive GIFs */
 .msg-bubble video, .video-gif-thumb {
   pointer-events: none !important;
   user-select: none !important;
   -webkit-user-select: none !important;
 }
 
+/* Typing Indicator */
 .typing-indicator-container {
   padding: 6px 20px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); flex-shrink: 0;
 }
@@ -203,6 +227,7 @@ body {
   40% { transform: scale(1.0); }
 }
 
+/* Discord Style Emoji Picker */
 .discord-emoji-picker {
   position: absolute; bottom: 50px; left: 0; width: 280px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 10px; z-index: 50;
 }
@@ -220,6 +245,7 @@ body {
 }
 .discord-picker-thumbnail:hover, .discord-picker-avatar-thumb:hover, .discord-picker-emoji-thumb:hover { transform: scale(1.1); border-color: var(--primary); }
 
+/* Inputs & Forms */
 .input-section { padding: 14px 20px; border-top: 1px solid var(--border-color); background: var(--card-bg); flex-shrink: 0; }
 .message-form { display: flex; align-items: center; gap: 12px; }
 .btn-emoji { font-size: 22px; cursor: pointer; background: none; border: none; transition: transform 0.15s ease; }
@@ -242,6 +268,7 @@ body {
 .btn-danger { background: var(--danger); color: #fff; }
 .full-width { width: 100%; }
 
+/* Modals & Overlays */
 .overlay {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--modal-overlay); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center; z-index: 100;
 }
@@ -278,9 +305,7 @@ body {
   overflow-y: auto;
 }
 
-/* -------------------------------------------------------------
-   MOBILE SPECIFIC OVERRIDES (Cozy UI layout for screens <600px)
-------------------------------------------------------------- */
+/* Mobile Layout Responsive Overrides */
 @media (max-width: 600px) {
   .chat-container {
     width: 100vw;
@@ -291,52 +316,17 @@ body {
   }
 
   .absolute-discord-logo {
-    display: none !important; /* Clears top bar clutter on mobile */
+    display: none !important;
   }
 
-  .header {
-    padding: 10px 12px;
-  }
-
-  .brand-title-group h1 {
-    font-size: 14px;
-  }
-
-  .sub-nav-bar {
-    padding: 6px 12px;
-  }
-
-  .input-section {
-    padding: 10px 12px;
-  }
-
-  .message-form {
-    gap: 8px;
-  }
-
-  .input-wrapper input {
-    padding: 9px 12px;
-    font-size: 14px;
-  }
-
-  .btn {
-    padding: 8px 14px;
-    font-size: 13px;
-    border-radius: 12px;
-  }
-
-  .messages-box {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .msg {
-    max-width: 90%;
-  }
-
-  .discord-emoji-picker {
-    width: calc(100vw - 24px);
-    left: 12px;
-    bottom: 60px;
-  }
+  .header { padding: 10px 12px; }
+  .brand-title-group h1 { font-size: 14px; }
+  .sub-nav-bar { padding: 6px 12px; }
+  .input-section { padding: 10px 12px; }
+  .message-form { gap: 8px; }
+  .input-wrapper input { padding: 9px 12px; font-size: 14px; }
+  .btn { padding: 8px 14px; font-size: 13px; border-radius: 12px; }
+  .messages-box { padding: 12px; gap: 12px; }
+  .msg { max-width: 90%; }
+  .discord-emoji-picker { width: calc(100vw - 24px); left: 12px; bottom: 60px; }
 }
