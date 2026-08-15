@@ -11,8 +11,10 @@ function createWindow() {
         }
     });
     
-    // Loads your chat app UI
     win.loadFile('index.html');
+    
+    // Maximized window (has your title bar and taskbar, not true full screen)
+    win.maximize();
 }
 
 app.whenReady().then(createWindow);

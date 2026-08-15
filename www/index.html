@@ -49,6 +49,14 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
+
+        /* 5. Floating Download Button Positioned Next to Floating Music Player */
+        .floating-download-container {
+            position: fixed;
+            bottom: 20px;
+            right: 85px; /* Adjust this distance to sit right next to your music button */
+            z-index: 9999;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -59,6 +67,19 @@
 <a href="https://discord.gg/nNGp9VVGWs" target="_blank" class="absolute-discord-logo" title="Join Discord">
     <img src="discord.png" alt="Discord" />
 </a>
+
+<!-- Floating Download Dropdown (Next to Music Player) -->
+<div class="floating-download-container">
+    <div class="download-dropdown" style="position: relative; display: inline-block;">
+        <button type="button" onclick="toggleDownloadMenu()" class="btn btn-primary" style="padding: 10px 14px; font-size: 13px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            📥 Download App
+        </button>
+        <div id="downloadMenu" style="display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 8px; background: #1a1a20; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); z-index: 1000; min-width: 180px; overflow: hidden; text-align: left;">
+            <a href="/downloads/matuchat.apk" download style="display: block; padding: 12px 14px; color: #fff; text-decoration: none; font-size: 13px; border-bottom: 1px solid #333;">📱 Android (.apk)</a>
+            <a href="/downloads/desktop-installer.exe" download style="display: block; padding: 12px 14px; color: #fff; text-decoration: none; font-size: 13px;">💻 Windows & Linux</a>
+        </div>
+    </div>
+</div>
 
 <main class="chat-container">
     <!-- Header -->
@@ -258,6 +279,20 @@
 
 <!-- Optimized Scripts: Zero-Flash Snap & Site-Wide Discord Twemoji -->
 <script>
+    // Toggle Download Dropdown Menu
+    function toggleDownloadMenu() {
+        const menu = document.getElementById("downloadMenu");
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+    }
+
+    // Close dropdown menu when clicking anywhere else on the page
+    window.addEventListener('click', function(e) {
+        if (!e.target.closest('.download-dropdown')) {
+            const menu = document.getElementById("downloadMenu");
+            if (menu) menu.style.display = "none";
+        }
+    });
+
     // 1. High-Speed Twemoji Converter Config (CDN)
     const TWEMOJI_CFG = {
         folder: 'svg',
