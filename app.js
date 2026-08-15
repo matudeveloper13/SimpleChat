@@ -931,8 +931,14 @@ if (discordEmojiGrid) {
         });
         discordEmojiGrid.appendChild(imgThumb);
     });
+// All 15 GIFs + video loaded with performance optimization
+    const projectVideos = [
+        "gif1.mp4", "gif2.mp4", "gif3.mp4", "gif4.mp4", "gif5.mp4", 
+        "gif6.mp4", "gif7.mp4", "gif8.mp4", "gif9.mp4", "gif10.mp4", 
+        "gif11.mp4", "gif12.mp4", "gif13.mp4", "gif14.mp4", "gif15.mp4", 
+        "myvideo.mp4"
+    ];
 
-    const projectVideos = ["gif1.mp4", "gif2.mp4", "gif3.mp4", "gif4.mp4", "gif5.mp4", "gif6.mp4", "gif7.mp4", "gif8.mp4", "gif9.mp4", "gif10.mp4", "myvideo.mp4"];
     projectVideos.forEach(videoSrc => {
         const wrapper = document.createElement("div");
         wrapper.className = "discord-picker-emoji-thumb video-wrapper";
@@ -940,7 +946,7 @@ if (discordEmojiGrid) {
         
         const vidThumb = document.createElement("video");
         vidThumb.src = videoSrc;
-        vidThumb.autoplay = true;
+        vidThumb.autoplay = false; // Kept paused by default to save CPU!
         vidThumb.loop = true;
         vidThumb.muted = true;
         vidThumb.playsInline = true;
@@ -950,6 +956,7 @@ if (discordEmojiGrid) {
         wrapper.addEventListener("click", async (e) => {
             e.preventDefault();
             discordEmojiPicker.classList.add("hidden");
+            setGifPickerPlaying(false);
             if (currentUsername === "Guest") return;
 
             let roomKey = "global";
@@ -986,14 +993,30 @@ if (discordEmojiGrid) {
     });
 }
 
+// Helper to play/pause GIFs so they don't lag your app in the background
+function setGifPickerPlaying(isPlaying) {
+    if (!discordEmojiGrid) return;
+    const videos = discordEmojiGrid.querySelectorAll("video");
+    videos.forEach(vid => {
+        if (isPlaying) {
+            vid.play().catch(() => {});
+        } else {
+            vid.pause();
+        }
+    });
+}
+
 emojiBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     discordEmojiPicker.classList.toggle("hidden");
+    const isOpen = !discordEmojiPicker.classList.contains("hidden");
+    setGifPickerPlaying(isOpen); // Only play videos when drawer is open!
 });
 
 document.addEventListener("click", (e) => {
     if (discordEmojiPicker && !discordEmojiPicker.contains(e.target) && e.target !== emojiBtn) {
         discordEmojiPicker.classList.add("hidden");
+        setGifPickerPlaying(false); // Pause videos when closing
     }
 });
 
